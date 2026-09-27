@@ -1,0 +1,49 @@
+; WinUSB driver package for AlphaSmart Neo (AlphaSmart Neo (Mode Switch))
+; DeviceInterfaceGUID: {A83F8E5B-2C4A-4BE9-9B06-7E3F1C4ABD04}
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = USBDevice
+ClassGuid   = {88BAE032-5A81-49f0-BC3D-A4FF138216D6}
+Provider    = %ManufacturerName%
+CatalogFile = neosync_bd04.cat
+DriverVer   = 09/27/2026,1.0.0.0
+PnpLockdown = 1
+
+[Manufacturer]
+%ManufacturerName% = Standard,NTamd64
+
+[Standard.NTamd64]
+%DeviceName% = USB_Install,USB\VID_081E&PID_BD04
+
+[USB_Install.NT]
+Include = winusb.inf
+Needs   = WINUSB.NT
+
+[USB_Install.NT.Services]
+Include    = winusb.inf
+AddService = WinUSB,0x00000002,WinUSB_ServiceInstall
+
+[WinUSB_ServiceInstall]
+DisplayName   = %WinUSB_SvcDesc%
+ServiceType   = 1
+StartType     = 3
+ErrorControl  = 1
+ServiceBinary = %12%\WinUSB.sys
+
+[USB_Install.NT.Wdf]
+KmdfService = WinUSB,WinUSB_wdfsect
+
+[WinUSB_wdfsect]
+KmdfLibraryVersion = 1.9
+
+[USB_Install.NT.HW]
+AddReg = Dev_AddReg
+
+[Dev_AddReg]
+HKR,,DeviceInterfaceGUIDs,0x00010000,"{A83F8E5B-2C4A-4BE9-9B06-7E3F1C4ABD04}"
+
+[Strings]
+ManufacturerName = "NeoSync"
+DeviceName       = "AlphaSmart Neo (Mode Switch)"
+WinUSB_SvcDesc   = "WinUSB"

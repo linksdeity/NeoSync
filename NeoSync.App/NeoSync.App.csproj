@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\NeoSync.Core\NeoSync.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="native\libwdi.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>libwdi.dll</Link>
+    </Content>
+    <Content Include="..\installer\driver\neosync_bd04.inf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>driver\neosync_bd04.inf</Link>
+    </Content>
+    <Content Include="..\installer\driver\neosync_bd04.cat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>driver\neosync_bd04.cat</Link>
+    </Content>
+    <Content Include="..\installer\driver\neosync_bd01.inf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>driver\neosync_bd01.inf</Link>
+    </Content>
+    <Content Include="..\installer\driver\neosync_bd01.cat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>driver\neosync_bd01.cat</Link>
+    </Content>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

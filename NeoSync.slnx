@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="NeoSync.App/NeoSync.App.csproj" />
+  <Project Path="NeoSync.Core/NeoSync.Core.csproj" />
+  <Project Path="NeoSync.Service/NeoSync.Service.csproj" />
+</Solution>

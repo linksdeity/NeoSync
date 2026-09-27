@@ -1,0 +1,29 @@
+NeoSync — License and Disclaimer
+
+NeoSync is unofficial, independently developed software for transferring
+files to and from the AlphaSmart Neo. It is not affiliated with, endorsed by,
+or supported by Renaissance Learning, AlphaSmart, or any successor company.
+
+USE AT YOUR OWN RISK.
+
+NeoSync installs a WinUSB driver package for the AlphaSmart Neo's USB
+interfaces and modifies Windows Plug and Play driver associations for that
+device. This process is generally safe and reversible (uninstalling NeoSync
+removes the driver package and restores the device's default Windows
+keyboard driver), but as with any software that installs device drivers,
+there is inherent risk.
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING
+FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE, INCLUDING BUT NOT LIMITED TO ANY LOSS OF DATA
+STORED ON THE ALPHASMART NEO OR YOUR COMPUTER.
+
+By continuing with this installation, you acknowledge that you have read
+this disclaimer and agree to use NeoSync at your own risk.
+
+See THIRD_PARTY_LICENSES.txt (included with this installation) for
+third-party software notices.

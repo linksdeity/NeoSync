@@ -1,0 +1,26 @@
+# Build outputs
+bin/
+obj/
+publish/
+test-publish/
+
+# Installer output and private signing key
+installer/Output/
+installer/driver/*.pfx
+
+# VS / Rider
+.vs/
+.idea/
+*.user
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Stray dev/diagnostic artifacts (not part of the project)
+logs.txt
+neosync.inf
+qc
+query
+start
+stop
