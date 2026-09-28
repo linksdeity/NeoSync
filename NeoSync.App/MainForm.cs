@@ -328,13 +328,13 @@ internal sealed partial class MainForm : Form
         string switchResult = NeoSyncHelperClient.Send("SWITCH");
         bool switched = switchResult == "OK";
         string switchDiag = switchResult.StartsWith("FAIL:") ? switchResult[5..] : switchResult;
-        File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss}] Service SWITCH \u2192 {switchResult}\n");
+        DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:HH:mm:ss}] Service SWITCH \u2192 {switchResult}\n");
 
         if (switched)
         {
             // Locate BD01 instance in the PnP registry once for per-iteration diagnostics.
             string? bd01Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD01");
-            File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss}] BD01 instanceId={bd01Id ?? "(not in registry)"}\n");
+            DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:HH:mm:ss}] BD01 instanceId={bd01Id ?? "(not in registry)"}\n");
 
             // Poll for up to 25 seconds; open immediately once the interface appears.
             const int maxWaitMs = 25_000;
@@ -375,7 +375,7 @@ internal sealed partial class MainForm : Form
                         }
                     }
                 }
-                File.AppendAllText(logPath,
+                DiagnosticsSettings.AppendLog(logPath,
                     $"[{DateTime.Now:HH:mm:ss.fff}] BD01 t={elapsed}ms: {presInfo} {cmInfo} {cfgInfo} diag={pollDiag}\n");
 
                 if (earlyTransport is not null) break;
@@ -388,7 +388,7 @@ internal sealed partial class MainForm : Form
 
             if (earlyTransport is not null)
             {
-                File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss}] TryOpen=True (after switch, {elapsed}ms)\n");
+                DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:HH:mm:ss}] TryOpen=True (after switch, {elapsed}ms)\n");
                 _device = new NeoDevice(earlyTransport);
                 Invoke(() => SetStatus("Enumerating files…"));
                 _applets = _device.EnumerateApplets();
@@ -396,7 +396,7 @@ internal sealed partial class MainForm : Form
                 return;
             }
 
-            File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss}] Timeout after {maxWaitMs}ms\n");
+            DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:HH:mm:ss}] Timeout after {maxWaitMs}ms\n");
             AppendPnpEvents(logPath, switchTime);
             Invoke(() => { SetStatus("BD01 did not respond. Unplug and replug the Neo, then click Connect again."); btnConnect.Text = "Connect"; btnConnect.Enabled = true; });
             return;
@@ -435,7 +435,7 @@ internal sealed partial class MainForm : Form
             step2Elapsed += step2PollMs;
         }
 
-        File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss}] TryOpen={transport is not null} - {tryOpenDiag}\n");
+        DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:HH:mm:ss}] TryOpen={transport is not null} - {tryOpenDiag}\n");
         if (transport is null)
         {
             Invoke(() =>
@@ -672,9 +672,9 @@ internal sealed partial class MainForm : Form
     private static void AppendPnpEvents(string logPath, DateTime after)
     {
         var events = QueryRecentPnpEvents(after);
-        File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss}] PnP events since switch ({events.Count}):\n");
+        DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:HH:mm:ss}] PnP events since switch ({events.Count}):\n");
         foreach (string ev in events)
-            File.AppendAllText(logPath, ev + "\n");
+            DiagnosticsSettings.AppendLog(logPath, ev + "\n");
     }
 
     private static List<string> QueryRecentPnpEvents(DateTime after)
@@ -714,7 +714,7 @@ internal sealed partial class MainForm : Form
         return results;
     }
 
-    private void DumpUsbDiagnostics()
+    private void ReportProblem()
     {
         var state = NeoDriverState.Detect();
         string dump = NeoUsbDiag.BuildDumpString(state);
@@ -726,12 +726,17 @@ internal sealed partial class MainForm : Form
         foreach (string ev in events) sb.AppendLine(ev);
         dump = sb.ToString();
 
+        // This is an explicit, one-off user action (distinct from the always-on/off
+        // background logging toggle) -- clicking the button is itself the consent.
         string logPath = Path.Combine(Path.GetTempPath(), "neosync_diag.txt");
-        File.AppendAllText(logPath, dump);
+        try { File.AppendAllText(logPath, dump); } catch { }
         try { Clipboard.SetText(dump); } catch { }
         MessageBox.Show(this,
-            $"Diagnostics copied to clipboard and appended to:\n{logPath}",
-            "NeoSync - USB Diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            "Diagnostic info copied to clipboard -- paste it into your bug report or support email.\r\n\r\n" +
+            "This never includes the contents of any file on the Neo -- only USB/driver state, " +
+            "timing, and command names.\r\n\r\n" +
+            $"Also saved to:\n{logPath}",
+            "NeoSync - Report a Problem", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     // ── UI helpers ────────────────────────────────────────────────────────────

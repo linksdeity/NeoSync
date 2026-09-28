@@ -8,6 +8,7 @@ internal static class DbgLog
 
     static DbgLog()
     {
+        if (!DiagnosticsSettings.IsEnabled) return;
         try
         {
             System.IO.File.AppendAllText(FilePath,
@@ -18,6 +19,7 @@ internal static class DbgLog
 
     public static void W(string msg)
     {
+        if (!DiagnosticsSettings.IsEnabled) return;
         try { System.IO.File.AppendAllText(FilePath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\r\n"); }
         catch { }
     }

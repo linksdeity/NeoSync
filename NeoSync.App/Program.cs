@@ -26,6 +26,12 @@ static class Program
                 Environment.Exit(result == "OK" ? 0 : 1);
                 return;
             }
+            if (args[0].Equals("--set-diagnostics", StringComparison.OrdinalIgnoreCase) && args.Length > 1)
+            {
+                string result = NeoSyncHelperClient.Send($"SET_DIAGNOSTICS {args[1]}");
+                Environment.Exit(result == "OK" ? 0 : 1);
+                return;
+            }
         }
 
         ApplicationConfiguration.Initialize();

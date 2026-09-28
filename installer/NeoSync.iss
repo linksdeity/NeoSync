@@ -38,6 +38,7 @@ Name: "{commondesktop}\NeoSync"; Filename: "{app}\NeoSync.App.exe"; Tasks: deskt
 
 [Tasks]
 Name: desktopicon; Description: "Create a &desktop shortcut"; GroupDescription: "Additional icons:"
+Name: diagnostics; Description: "Allow NeoSync to keep local diagnostic logs (recommended -- helps troubleshoot problems; never includes the contents of your files, and is never sent anywhere automatically)"; GroupDescription: "Privacy:"; Flags: checkedonce
 
 [Run]
 Filename: "{app}\NeoSync.App.exe"; Description: "Launch NeoSync"; Flags: nowait postinstall skipifsilent
@@ -98,10 +99,17 @@ begin
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
+  DiagFlag: String;
 begin
   if CurStep = ssPostInstall then
   begin
     StartHelperService;
+    if WizardIsTaskSelected('diagnostics') then DiagFlag := '1' else DiagFlag := '0';
+    Exec(ExpandConstant('{app}') + '\NeoSync.App.exe',
+      '--set-diagnostics ' + DiagFlag,
+      ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ResultCode);
     InstallDrivers;
   end;
 end;

@@ -1,4 +1,6 @@
-﻿namespace NeoSync.App;
+﻿using NeoSync.Core.Ipc;
+
+namespace NeoSync.App;
 
 partial class MainForm
 {
@@ -6,7 +8,8 @@ partial class MainForm
 
     private Button               btnAdvanced   = null!;
     private ToolStripMenuItem     mnuShowSystem = null!;
-    private ToolStripMenuItem     mnuDumpDiag   = null!;
+    private ToolStripMenuItem     mnuReportProblem = null!;
+    private ToolStripMenuItem     mnuDiagLogging = null!;
     private ContextMenuStrip     menuAdvanced  = null!;
     private TreeView             treeFiles     = null!;
     private Button               btnConnect    = null!;
@@ -64,9 +67,14 @@ partial class MainForm
         menuAdvanced.Items.Add(new ToolStripSeparator());
         menuAdvanced.Items.Add("Reinstall WinUSB drivers…", null, (_, _) => ShowDriverSetup());        menuAdvanced.Items.Add("Remove WinUSB drivers\u2026",    null, (_, _) => RemoveDrivers());
         menuAdvanced.Items.Add(new ToolStripSeparator());
-        mnuDumpDiag = new ToolStripMenuItem("Dump USB diagnostics\u2026");
-        mnuDumpDiag.Click += (_, _) => DumpUsbDiagnostics();
-        menuAdvanced.Items.Add(mnuDumpDiag);        menuAdvanced.Items.Add(new ToolStripSeparator());
+        mnuReportProblem = new ToolStripMenuItem("Report a Problem…");
+        mnuReportProblem.Click += (_, _) => ReportProblem();
+        menuAdvanced.Items.Add(mnuReportProblem);
+        mnuDiagLogging = new ToolStripMenuItem("Enable diagnostic logging") { CheckOnClick = true };
+        mnuDiagLogging.Checked = NeoSyncHelperClient.Send("GET_DIAGNOSTICS") != "0";
+        mnuDiagLogging.Click += (_, _) => NeoSyncHelperClient.Send($"SET_DIAGNOSTICS {(mnuDiagLogging.Checked ? 1 : 0)}");
+        menuAdvanced.Items.Add(mnuDiagLogging);
+        menuAdvanced.Items.Add(new ToolStripSeparator());
         mnuQuickSyncFolder = new ToolStripMenuItem("Change Quick Sync folder…");
         mnuQuickSyncFolder.Click += (_, _) => ChangeQuickSyncFolder();
         menuAdvanced.Items.Add(mnuQuickSyncFolder);
