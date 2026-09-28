@@ -14,7 +14,7 @@ Clicking Connect gets stuck at **"Waiting for device to re-enumerate…"** and t
 
 Why pnputil fails here: `pnputil /install` goes through the normal PnP rank
 mechanism. For a connected HID keyboard, Windows won't swap the inbox driver
-(HidUsb) for a third-party one via the normal rank path — even when the new INF
+(HidUsb) for a third-party one via the normal rank path - even when the new INF
 has a more specific hardware-ID match.
 
 Zadig (libwdi) avoids this by calling `UpdateDriverForPlugAndPlayDevicesW`
@@ -63,7 +63,7 @@ used to do a cleaner revert, but pnputil is simpler and likely sufficient.
 | # | File | What was fixed |
 |---|------|----------------|
 | 1 | `create-driver-package.ps1` | `neosync_bd04.inf` now uses `Provider=NeoSync` so it gets a different oem number from `neosync_bd01.inf`. Before this, staging bd04 replaced bd01 (same oem212.inf), then Remove deleted bd01's driver too. |
-| 2 | `NeoHidSwitcher.cs` | wIndex order swapped: 0 first, then 1. BD04 is single-interface — wIndex=1 SET_REPORT is ACK'd but ignored by firmware. |
+| 2 | `NeoHidSwitcher.cs` | wIndex order swapped: 0 first, then 1. BD04 is single-interface - wIndex=1 SET_REPORT is ACK'd but ignored by firmware. |
 | 3 | `Bd04WinUsbCycle.RemoveAny()` | Now matches `neosync_bd04.inf` exactly (not `neosync_bd04_mi01.inf`). |
 | 4 | `MainForm.cs ConnectAsync` | Changed `BothReady` → `HidReady` gate. BD01 being NotSeen is expected before first switch. |
 | 5 | `MainForm.cs ConnectAsync` | Handles `Hid == WinUsb` (leftover from failed run): captures HidInfPath for cleanup. |
@@ -85,9 +85,9 @@ used to do a cleaner revert, but pnputil is simpler and likely sufficient.
 
 ## Current driver state on test machine (2026-08-03 end of session)
 
-- BD04: `HidUsb` (keyboard works fine — RemoveAny cleaned up bd04 WinUSB)
+- BD04: `HidUsb` (keyboard works fine - RemoveAny cleaned up bd04 WinUSB)
 - BD01: `WinUSB` / `oem212.inf` staged ✓ (re-staged manually after earlier deletion)
-- `neosync_bd04_mi01.inf` still in store (oem213.inf was deleted — need to check oem number)
+- `neosync_bd04_mi01.inf` still in store (oem213.inf was deleted - need to check oem number)
 
 Run `pnputil /enum-drivers | findstr /i neosync` to see current state.
 
@@ -111,13 +111,13 @@ C:\repos\neosync\installer\Output\NeoSyncSetup.exe
 The debug log at `%TEMP%\neosync-debug.log` shows every registry poll and
 pnputil call verbatim. Key things to look for:
 
-- After `Bd04WinUsbCycle.Install:` — check that `staged as:` is **not** oem212.inf
+- After `Bd04WinUsbCycle.Install:` - check that `staged as:` is **not** oem212.inf
   (that would mean the package-collision bug returned).
-- During `WaitForWinUsb: polling` — check what `BD04=` shows each iteration.
+- During `WaitForWinUsb: polling` - check what `BD04=` shows each iteration.
   If it stays `WindowsHid` forever → pnputil installed but HidUsb is not being
   replaced (the UpdateDriverForPlugAndPlayDevicesW fix is needed).
   If it shows `DriverError` → WinUSB is loading but failing (signing/security issue).
-- `TrySwitchToCommsMode: WinUSB devicePath=` — check that a real path appears,
+- `TrySwitchToCommsMode: WinUSB devicePath=` - check that a real path appears,
   not `(null)`. If null, WinUSB interface was not registered.
 
 ## Mode switch details
@@ -135,7 +135,7 @@ Data        = [0xE0] … [0xE4]
 ```
 
 Before each attempt, `SendHidInit` sends SET_PROTOCOL(1) and SET_IDLE(0).
-The Mac uses IOUSBDeviceInterface DeviceRequest — same wire format.
+The Mac uses IOUSBDeviceInterface DeviceRequest - same wire format.
 
 BD01 appears after successful switch. `TryOpen` polls `\\?\USB#VID_081E&PID_BD01#...`
 with CreateFile; Win32=2 = device not yet present (normal while switching).

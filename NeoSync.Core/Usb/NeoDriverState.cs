@@ -1,5 +1,5 @@
 // Detects the current Windows driver state for both AlphaSmart Neo USB modes.
-// All detection is read-only registry access — no admin required.
+// All detection is read-only registry access - no admin required.
 using System.Runtime.Versioning;
 using Microsoft.Win32;
 
@@ -10,7 +10,7 @@ public enum NeoDriverKind
 {
     /// <summary>Device has never been connected; no registry entry exists.</summary>
     NotSeen,
-    /// <summary>WinUSB is installed — device is ready for use by NeoSync.</summary>
+    /// <summary>WinUSB is installed - device is ready for use by NeoSync.</summary>
     WinUsb,
     /// <summary>Windows default HID keyboard driver (BD04 out-of-the-box state).</summary>
     WindowsHid,
@@ -18,7 +18,7 @@ public enum NeoDriverKind
     RenaissanceLearning,
     /// <summary>WinUSB driver is installed and committed but failed to start (e.g. CM_PROB_FAILED_START).</summary>
     DriverError,
-    /// <summary>usbccgp.sys composite parent — creates MI_00/MI_01 child nodes.</summary>
+    /// <summary>usbccgp.sys composite parent - creates MI_00/MI_01 child nodes.</summary>
     Composite,
     /// <summary>Some other driver (libusb-win32, libusbK, etc.).</summary>
     Other
@@ -27,8 +27,8 @@ public enum NeoDriverKind
 [SupportedOSPlatform("windows")]
 public sealed class NeoDriverState
 {
-    public NeoDriverKind Hid    { get; }  // BD04 — keyboard mode
-    public NeoDriverKind Comms  { get; }  // BD01 — comms/file-transfer mode
+    public NeoDriverKind Hid    { get; }  // BD04 - keyboard mode
+    public NeoDriverKind Comms  { get; }  // BD01 - comms/file-transfer mode
     public string? HidInfPath   { get; }  // OEM INF name (e.g. oem6.inf) for BD04, or null
     public string? CommsInfPath { get; }  // OEM INF name for BD01, or null
 
@@ -61,7 +61,7 @@ public sealed class NeoDriverState
             Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Enum\USB");
         if (usbKey is null) { DbgLog.W("  USB key missing → NotSeen"); return (NeoDriverKind.NotSeen, null); }
 
-        // Exact match only — "Contains" previously also matched composite child devIds
+        // Exact match only - "Contains" previously also matched composite child devIds
         // like "VID_081E&PID_BD04&MI_00", causing their stale/ghost data to be reported
         // for plain "VID_081E&PID_BD04" lookups.
         string? devId = Array.Find(usbKey.GetSubKeyNames(),
@@ -72,7 +72,7 @@ public sealed class NeoDriverState
         if (devKey is null) { DbgLog.W("  devId key missing → NotSeen"); return (NeoDriverKind.NotSeen, null); }
 
         // A device can have multiple instance IDs registered from past connections
-        // (different ports, past force-installs, etc.) — only ONE, if any, is the
+        // (different ports, past force-installs, etc.) - only ONE, if any, is the
         // currently-connected live instance. Returning the first instId found regardless
         // of presence was reporting stale ghost-instance data as if it were live.
         (NeoDriverKind kind, string? inf)? fallback = null;
@@ -129,7 +129,7 @@ public sealed class NeoDriverState
 
         if (fallback is { } fb)
         {
-            DbgLog.W("  no present instance found — falling back to first known instance data");
+            DbgLog.W("  no present instance found - falling back to first known instance data");
             return fb;
         }
 

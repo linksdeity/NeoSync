@@ -1,5 +1,5 @@
 // Message command codes for the AlphaSmart Neo protocol.
-// Ported from ASMessage.h — Copyright (c) 2008-2013 tSoniq (original reverse-engineering).
+// Ported from ASMessage.h - Copyright (c) 2008-2013 tSoniq (original reverse-engineering).
 namespace NeoSync.Core.Protocol;
 
 internal static class NeoMessageCodes

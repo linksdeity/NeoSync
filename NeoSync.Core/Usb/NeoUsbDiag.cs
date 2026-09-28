@@ -1,6 +1,6 @@
 // Diagnostic helpers for USB device state: CM_Get_DevNode_Status + ConfigFlags registry reads.
 // Used by NeoSync.App to build per-poll-iteration log lines and on-demand diagnostic dumps.
-// No EventLog here — NeoSync.Core targets net8.0 (cross-platform); EventLog lives in NeoSync.App.
+// No EventLog here - NeoSync.Core targets net8.0 (cross-platform); EventLog lives in NeoSync.App.
 using System.Runtime.Versioning;
 using System.Text;
 using Microsoft.Win32;
@@ -23,7 +23,7 @@ public static class NeoUsbDiag
         => NativeMethods.GetDevNodeStatus(instanceId);
 
     /// <summary>Finds the currently-present registry instance ID path for the given VID/PID
-    /// (exact devId match — a "Contains" match previously also matched composite child
+    /// (exact devId match - a "Contains" match previously also matched composite child
     /// devIds like "...&MI_00"). Prefers a live/present instance over stale ghost ones,
     /// falling back to the first found if none are currently present.</summary>
     public static string? FindVidPidInstanceId(string vidPid)

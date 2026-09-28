@@ -33,6 +33,7 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>neosync.ico</ApplicationIcon>
   </PropertyGroup>
 
 </Project>

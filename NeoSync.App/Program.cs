@@ -13,7 +13,7 @@ static class Program
             // Headless modes called by the Inno Setup installer/uninstaller (already elevated).
             // Both route through NeoSyncHelper (the same service used at runtime) so install-time
             // setup gets the same reliability fixes (auto-restart on transient driver failures,
-            // no harmful install/uninstall churn) as normal Connect/Disconnect — previously this
+            // no harmful install/uninstall churn) as normal Connect/Disconnect - previously this
             // duplicated an older, less resilient direct-call implementation.
             if (args[0].Equals("--setup-drivers", StringComparison.OrdinalIgnoreCase) && args.Length > 1)
             {

@@ -1,7 +1,7 @@
 // 8-byte command/response message for the AlphaSmart Neo protocol.
 // Format: [cmd(1)] [payload(6)] [checksum(1)]
 // Checksum = sum of bytes 0-6 mod 256. All multi-byte values are big-endian.
-// Ported from ASMessage.h — Copyright (c) 2008-2013 tSoniq (original reverse-engineering).
+// Ported from ASMessage.h - Copyright (c) 2008-2013 tSoniq (original reverse-engineering).
 namespace NeoSync.Core.Protocol;
 
 internal sealed class NeoMessage

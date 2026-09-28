@@ -1,4 +1,4 @@
-// TEMP — remove after diagnosis
+// TEMP - remove after diagnosis
 namespace NeoSync.Core.Usb;
 
 internal static class DbgLog

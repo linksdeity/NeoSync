@@ -1,5 +1,5 @@
 // 40-byte binary file attribute structure for the AlphaSmart Neo.
-// Ported from ASFileAttributes.h — Copyright (c) 2008-2013 tSoniq (original reverse-engineering).
+// Ported from ASFileAttributes.h - Copyright (c) 2008-2013 tSoniq (original reverse-engineering).
 //
 // Binary layout:
 //   0x00–0x0f  File name (null-terminated, max 15 chars)

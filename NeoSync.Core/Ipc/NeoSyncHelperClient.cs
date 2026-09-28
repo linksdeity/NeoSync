@@ -26,7 +26,7 @@ public static class NeoSyncHelperClient
         }
         catch (TimeoutException)
         {
-            return "ERROR:NeoSyncHelper service not responding — please reinstall NeoSync.";
+            return "ERROR:NeoSyncHelper service not responding - please reinstall NeoSync.";
         }
         catch (Exception ex)
         {

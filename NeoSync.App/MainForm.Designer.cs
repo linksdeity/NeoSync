@@ -12,6 +12,8 @@ partial class MainForm
     private Button               btnConnect    = null!;
     private Button               btnDownload   = null!;
     private Button               btnUpload     = null!;
+    private Button               btnQuickSync  = null!;
+    private ToolStripMenuItem     mnuQuickSyncFolder = null!;
     private StatusStrip          statusStrip   = null!;
     private ToolStripStatusLabel lblStatus     = null!;
     private FlowLayoutPanel      pnlButtons    = null!;
@@ -33,19 +35,21 @@ partial class MainForm
         SuspendLayout();
 
         Text          = "NeoSync";
-        MinimumSize   = new Size(460, 520);
-        Size          = new Size(520, 620);
+        MinimumSize   = new Size(650, 560);
+        Size          = new Size(700, 680);
         StartPosition = FormStartPosition.CenterScreen;
+        try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
         Font          = new Font("Segoe UI", 9f);
 
         statusStrip = new StatusStrip { Dock = DockStyle.Bottom };
-        lblStatus   = new ToolStripStatusLabel("Not connected.");
+        lblStatus   = new ToolStripStatusLabel("Not connected.") { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
         statusStrip.Items.Add(lblStatus);
 
         var btnPad = new Padding(0, 0, 6, 0);
         btnConnect  = new Button { Text = "Connect",  AutoSize = true, Margin = new Padding(0, 0, 16, 0) };
         btnDownload = new Button { Text = "Download", AutoSize = true, Margin = btnPad, Enabled = false };
         btnUpload   = new Button { Text = "Upload",   AutoSize = true, Margin = btnPad, Enabled = false };
+        btnQuickSync = new Button { Text = "Quick Sync", AutoSize = true, Margin = new Padding(16, 0, 6, 0), Enabled = false };
 
         btnAdvanced = new Button
         {
@@ -62,8 +66,10 @@ partial class MainForm
         menuAdvanced.Items.Add(new ToolStripSeparator());
         mnuDumpDiag = new ToolStripMenuItem("Dump USB diagnostics\u2026");
         mnuDumpDiag.Click += (_, _) => DumpUsbDiagnostics();
-        menuAdvanced.Items.Add(mnuDumpDiag);
-        pnlButtons = new FlowLayoutPanel
+        menuAdvanced.Items.Add(mnuDumpDiag);        menuAdvanced.Items.Add(new ToolStripSeparator());
+        mnuQuickSyncFolder = new ToolStripMenuItem("Change Quick Sync folder…");
+        mnuQuickSyncFolder.Click += (_, _) => ChangeQuickSyncFolder();
+        menuAdvanced.Items.Add(mnuQuickSyncFolder);        pnlButtons = new FlowLayoutPanel
         {
             Dock          = DockStyle.Fill,
             Padding       = new Padding(6, 6, 6, 4),
@@ -72,7 +78,7 @@ partial class MainForm
             AutoSize      = false
         };
         pnlButtons.Controls.AddRange(
-            new Control[] { btnConnect, btnDownload, btnUpload, btnAdvanced });
+            new Control[] { btnConnect, btnDownload, btnUpload, btnQuickSync, btnAdvanced });
 
         treeFiles = new TreeView
         {
@@ -99,6 +105,7 @@ partial class MainForm
         btnConnect.Click    += btnConnect_Click;
         btnDownload.Click   += btnDownload_Click;
         btnUpload.Click     += btnUpload_Click;
+        btnQuickSync.Click  += btnQuickSync_Click;
         btnAdvanced.Click   += (_, _) => menuAdvanced.Show(btnAdvanced, 0, btnAdvanced.Height);
         treeFiles.AfterSelect += treeFiles_AfterSelect;
 

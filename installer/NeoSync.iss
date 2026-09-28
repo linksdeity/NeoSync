@@ -1,6 +1,6 @@
 [Setup]
 AppName=NeoSync
-; AppVersion is passed from build.ps1 via /DAppVersion=x.y — defaults to 1.0 for IDE use.
+; AppVersion is passed from build.ps1 via /DAppVersion=x.y - defaults to 1.0 for IDE use.
 #ifndef AppVersion
   #define AppVersion "1.0"
 #endif
@@ -14,12 +14,13 @@ OutputBaseFilename=NeoSyncSetup
 Compression=lzma2
 SolidCompression=yes
 PrivilegesRequired=admin
-; 64-bit Windows only — libwdi.dll and the .NET publish are x64
+; 64-bit Windows only - libwdi.dll and the .NET publish are x64
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ; User must accept the disclaimer (unofficial software, use at your own risk,
 ; driver installation risk) before Setup proceeds.
 LicenseFile=LICENSE.txt
+SetupIconFile=..\NeoSync.App\neosync.ico
 
 [Files]
 ; All app files from dotnet publish output (includes libwdi.dll at root)
@@ -45,7 +46,7 @@ Filename: "{app}\NeoSync.App.exe"; Description: "Launch NeoSync"; Flags: nowait 
 [Code]
 // Service must be created and running BEFORE any driver setup, since setup now routes
 // through NeoSyncHelper (the same service used at runtime) instead of duplicating driver
-// logic directly in this script — that duplicate path lacked the reliability fixes
+// logic directly in this script - that duplicate path lacked the reliability fixes
 // (auto-restart on transient driver failures, no harmful install/uninstall churn) that
 // the service itself has, so a real client's first-run setup could get stuck with no
 // self-healing (recovering from that during development required manual pnputil commands).
@@ -76,9 +77,12 @@ begin
 
   // Step 2: Ask user to connect the Neo (in its default keyboard mode, BD04)
   if MsgBox('USB Driver Setup' + #13#10#13#10 +
-      'If the Neo is already plugged in, unplug it now.' + #13#10 +
-      'Then plug it in and wait for the USB connect sound (or the keyboard light).' + #13#10 +
-      'Click OK once Windows has recognised it as a keyboard -- NeoSync will switch it to transfer mode.' + #13#10#13#10 +
+      'Connect or reconnect the Neo -- unplug and plug it back in as needed -- until it is ' +
+      'emulating a keyboard (the keyboard light is on). Then click OK.' + #13#10#13#10 +
+      'IMPORTANT: after this, the Neo will no longer work as a normal USB keyboard on this PC -- ' +
+      'NeoSync replaces the keyboard driver with its own transfer driver. If you need standalone ' +
+      'keyboard "send" functionality again, use Advanced > Remove WinUSB drivers in NeoSync, then ' +
+      'unplug and replug the Neo.' + #13#10#13#10 +
       'Click Cancel to skip (the driver is staged and will apply the next time you use NeoSync).',
       mbConfirmation, MB_OKCANCEL) = IDCANCEL then Exit;
 

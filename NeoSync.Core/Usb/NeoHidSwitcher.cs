@@ -1,14 +1,14 @@
-﻿// Switches the AlphaSmart Neo from HID keyboard mode (PID=0xBD04) to
+// Switches the AlphaSmart Neo from HID keyboard mode (PID=0xBD04) to
 // bulk comms mode (PID=0xBD01) by sending five USB control transfers.
 //
 // Protocol confirmed against neotools (Linux, C:\repos\neotools\neotools\device.py
-// flip_to_comms_mode()): bmRequestType=0x20 (Class|Device — NOT Interface),
+// flip_to_comms_mode()): bmRequestType=0x20 (Class|Device - NOT Interface),
 // bRequest=9 (SET_REPORT), wValue=0x0200, wIndex=1, one byte per transfer
 // (0xE0..0xE4), preceded by SET_CONFIGURATION. BD04 has only one real USB
-// interface — there is no MI_01 to split out via a composite driver.
+// interface - there is no MI_01 to split out via a composite driver.
 //
 // TrySwitchViaHid()/FindHidInterface1Path() below are dead ends kept only for
-// the libwdi fallback install path (NeoDriverInstaller.InstallBoth) — they
+// the libwdi fallback install path (NeoDriverInstaller.InstallBoth) - they
 // will always fail to find MI_01 since it doesn't exist on this device.
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
@@ -37,7 +37,7 @@ public static class NeoHidSwitcher
         DbgLog.W($"TrySwitchToCommsMode: WinUSB devicePath={devicePath ?? "(null)"}");
         if (devicePath is null)
         {
-            diagnostics = "WinUSB BD04 device not found — run Setup Drivers with Neo connected.";
+            diagnostics = "WinUSB BD04 device not found - run Setup Drivers with Neo connected.";
             return false;
         }
 
@@ -68,7 +68,7 @@ public static class NeoHidSwitcher
         try
         {
             // Send once, retry only if the transfer itself fails outright. Do NOT wait
-            // here for BD01 to appear/settle — that's CmdSwitch's job (it force-installs
+            // here for BD01 to appear/settle - that's CmdSwitch's job (it force-installs
             // BD01's WinUSB driver the moment it's detected). If we wait+timeout here,
             // the caller treats it as total failure and never runs that detection loop,
             // even though BD01 may show up moments later and then get stranded driverless.
@@ -95,7 +95,7 @@ public static class NeoHidSwitcher
                     return true;
                 }
                 diagnostics = $"attempt {attempt}: {sendDiag}";
-                // one retry for a genuine send failure (e.g. transient STALL) — falls through to attempt 2
+                // one retry for a genuine send failure (e.g. transient STALL) - falls through to attempt 2
             }
             return false;
         }
@@ -111,7 +111,7 @@ public static class NeoHidSwitcher
         {
             var setup = new NativeMethods.WinUsbSetupPacket
             {
-                RequestType = 0x20,      // Class | Device | Host→Device — matches neotools exactly
+                RequestType = 0x20,      // Class | Device | Host→Device - matches neotools exactly
                 Request     = 9,         // SET_REPORT
                 Value       = 0x0200,
                 Index       = 1,
@@ -196,7 +196,7 @@ public static class NeoHidSwitcher
         {
             NativeMethods.HidP_GetCaps(preparsed, out var caps);
             DbgLog.W($"TrySwitchViaHid: caps Usage={caps.Usage:x4} UsagePage={caps.UsagePage:x4} OutputReportByteLength={caps.OutputReportByteLength}");
-            // Attempt the switch regardless of OutputReportByteLength — if bInterfaceNumber=1
+            // Attempt the switch regardless of OutputReportByteLength - if bInterfaceNumber=1
             // the SET_REPORT control transfer will carry wIndex=1 (the correct target).
             int reportLen = Math.Max((int)caps.OutputReportByteLength, 2); // at minimum: reportID + 1 data byte
             byte[] buf = new byte[reportLen];
@@ -257,7 +257,7 @@ public static class NeoHidSwitcher
                     bestPath = path;
                     break;
                 }
-                // Keep any BD04 HID path as a fallback — kbdhid interface may be bInterfaceNumber=1.
+                // Keep any BD04 HID path as a fallback - kbdhid interface may be bInterfaceNumber=1.
                 if (lower.Contains($"pid_{HidProductId:x4}"))
                     fallbackPath ??= path;
             }

@@ -82,7 +82,7 @@ public sealed class NeoUsbTransport : INeoTransport
             remaining -= (int)transferred;
             actual    += (int)transferred;
 
-            if (transferred < 8) break; // short read — end of data
+            if (transferred < 8) break; // short read - end of data
         }
 
         return true;

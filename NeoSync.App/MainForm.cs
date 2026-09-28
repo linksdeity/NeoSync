@@ -52,7 +52,7 @@ internal sealed partial class MainForm : Form
         string msg = "";
         if (state.HidInfPath   != null) msg += $"BD04 ({state.HidInfPath}): {(ok04 ? "removed" : "failed")}\r\n{out04}\r\n\r\n";
         if (state.CommsInfPath != null) msg += $"BD01 ({state.CommsInfPath}): {(ok01 ? "removed" : "failed")}\r\n{out01}";
-        MessageBox.Show(this, msg.Trim(), "NeoSync — Remove Drivers",
+        MessageBox.Show(this, msg.Trim(), "NeoSync - Remove Drivers",
             MessageBoxButtons.OK, ok04 && ok01 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
     }
 
@@ -67,13 +67,14 @@ internal sealed partial class MainForm : Form
             _device = null;
             _applets.Clear();
             treeFiles.Nodes.Clear();
-            btnDownload.Enabled = false;
-            btnUpload.Enabled   = false;
-            btnConnect.Text     = "Connect";
+            btnDownload.Enabled  = false;
+            btnUpload.Enabled    = false;
+            btnQuickSync.Enabled = false;
+            btnConnect.Text      = "Connect";
             SetStatus("Disconnecting\u2026");
 
             // BD04 sometimes lands in a transient failed-start state when the Neo
-            // reboots back into keyboard mode — same issue as on Connect, fixed the
+            // reboots back into keyboard mode - same issue as on Connect, fixed the
             // same way (a soft device restart, not a reinstall).
             Task.Run(FixBd04AfterDisconnect).ContinueWith(_ =>
             {
@@ -84,9 +85,10 @@ internal sealed partial class MainForm : Form
 
         // Disconnected → start connecting
         SetStatus("Connecting\u2026");
-        btnConnect.Enabled  = false;
-        btnDownload.Enabled = false;
-        btnUpload.Enabled   = false;
+        btnConnect.Enabled   = false;
+        btnDownload.Enabled  = false;
+        btnUpload.Enabled    = false;
+        btnQuickSync.Enabled = false;
         treeFiles.Nodes.Clear();
         _applets.Clear();
         _device?.Dispose();
@@ -104,12 +106,18 @@ internal sealed partial class MainForm : Form
         if (_device is null) return;
         if (treeFiles.SelectedNode?.Tag is not (NeoApplet applet, int fileIndex)) return;
 
+        NeoFileAttributes? attr = _device.GetFileAttributes(applet, fileIndex);
+
+        // Re-fetch the real file name - the tree label now has a size suffix appended for display.
+        string? realName = attr?.FileName;
+        string defaultName = string.IsNullOrEmpty(realName) ? treeFiles.SelectedNode.Text : realName;
+
         using var dlg = new SaveFileDialog
         {
             Title      = "Save file from Neo",
             Filter     = "Text files (*.txt)|*.txt|All files (*.*)|*.*",
             DefaultExt = "txt",
-            FileName   = treeFiles.SelectedNode.Text
+            FileName   = defaultName
         };
 
         if (dlg.ShowDialog() != DialogResult.OK) return;
@@ -154,11 +162,109 @@ internal sealed partial class MainForm : Form
         btnUpload.Enabled   = fileSelected;
     }
 
+    private void btnQuickSync_Click(object sender, EventArgs e)
+    {
+        if (_device is null) return;
+
+        SetStatus("Quick Sync starting…");
+        btnQuickSync.Enabled = false;
+
+        Task.Run(QuickSync).ContinueWith(t =>
+        {
+            Invoke(() =>
+            {
+                btnQuickSync.Enabled = _device is not null;
+                if (t.Exception != null)
+                    SetStatus($"Quick Sync failed: {t.Exception.InnerException?.Message ?? t.Exception.Message}");
+            });
+        });
+    }
+
+    private void ChangeQuickSyncFolder()
+    {
+        using var dlg = new FolderBrowserDialog
+        {
+            Description         = "Choose the folder Quick Sync should save files to",
+            SelectedPath        = QuickSyncSettings.GetFolder(),
+            ShowNewFolderButton = true
+        };
+
+        if (dlg.ShowDialog(this) != DialogResult.OK) return;
+        QuickSyncSettings.SetFolder(dlg.SelectedPath);
+        MessageBox.Show(this, $"Quick Sync will now save to:\r\n{dlg.SelectedPath}",
+            "NeoSync - Quick Sync", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
+    /// <summary>
+    /// Backs up whatever's currently in the Quick Sync folder into a timestamped Archive
+    /// subfolder, then downloads every non-empty AlphaWord file into it fresh.
+    /// </summary>
+    private void QuickSync()
+    {
+        string folder = QuickSyncSettings.GetFolder();
+        Directory.CreateDirectory(folder);
+
+        string[] existing = Directory.GetFiles(folder, "*", SearchOption.TopDirectoryOnly);
+        if (existing.Length > 0)
+        {
+            string archiveDir = Path.Combine(folder, "Archive", DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss"));
+            Directory.CreateDirectory(archiveDir);
+            foreach (string file in existing)
+                File.Move(file, Path.Combine(archiveDir, Path.GetFileName(file)), overwrite: true);
+            Invoke(() => SetStatus($"Backed up {existing.Length} existing file(s)…"));
+        }
+
+        NeoApplet? alphaWord = _applets.FirstOrDefault(a => a.IsAlphaWord);
+        if (alphaWord is null)
+        {
+            Invoke(() => SetStatus("Quick Sync: no AlphaWord files found."));
+            return;
+        }
+
+        int fileCount = alphaWord.FileCount > 0
+            ? alphaWord.FileCount
+            : (_device?.GetAppletFileCount(alphaWord) ?? 0);
+
+        int synced = 0;
+        for (int i = 1; i <= fileCount; i++)
+        {
+            NeoFileAttributes? attr = _device?.GetFileAttributes(alphaWord, i);
+            if (attr is null || attr.AllocSize <= attr.MinSize) continue; // skip empty files
+
+            byte[]? data = _device?.ReadFile(alphaWord, i);
+            if (data is null || data.Length == 0) continue;
+
+            try
+            {
+                string text = ConvertAlphaWordBytes(data);
+                string baseName = string.IsNullOrEmpty(attr.FileName) ? $"File {i}" : attr.FileName;
+                string destPath = Path.Combine(folder, SanitizeFileName(baseName) + ".txt");
+                File.WriteAllText(destPath, text, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+                synced++;
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(data);
+            }
+        }
+
+        Invoke(() => SetStatus($"Quick Sync complete: {synced} file(s) saved to {folder}."));
+    }
+
+    /// <summary>File names come from the device and shouldn't be trusted to build a
+    /// path directly -- strip anything that isn't valid in a Windows file name.</summary>
+    private static string SanitizeFileName(string name)
+    {
+        foreach (char c in Path.GetInvalidFileNameChars())
+            name = name.Replace(c, '_');
+        return name;
+    }
+
     // ── Connection flow ───────────────────────────────────────────────────────
 
     /// <summary>
     /// After the Neo reboots back into keyboard mode, BD04 sometimes lands in a
-    /// transient failed-start state purely from Windows' own driver re-selection —
+    /// transient failed-start state purely from Windows' own driver re-selection -
     /// a soft device restart (not a reinstall) reliably clears it. Runs on a
     /// background thread; polls briefly since the physical re-enumeration isn't instant.
     /// </summary>
@@ -168,7 +274,7 @@ internal sealed partial class MainForm : Form
         {
             Thread.Sleep(300);
 
-            // Confirm a LIVE instance actually exists before trusting its driver kind —
+            // Confirm a LIVE instance actually exists before trusting its driver kind -
             // NeoDriverState.Detect() falls back to stale ghost data (from before the
             // reboot) when nothing is currently present, which was causing this loop to
             // wrongly conclude "already healthy" before the device had even come back.
@@ -178,11 +284,11 @@ internal sealed partial class MainForm : Form
             var state = NeoDriverState.Detect();
             if (state.Hid == NeoDriverKind.DriverError)
             {
-                // A single restart doesn't always clear it — retry once more if needed.
+                // A single restart doesn't always clear it - retry once more if needed.
                 for (int attempt = 1; attempt <= 2 && state.Hid == NeoDriverKind.DriverError; attempt++)
                 {
                     NeoSyncHelperClient.Send($"RESTART_BD01 {bd04Id}");
-                    // The restart can take 10+ seconds to fully settle — keep polling
+                    // The restart can take 10+ seconds to fully settle - keep polling
                     // rather than assuming one restart call is instantly effective.
                     for (int j = 0; j < 60; j++)
                     {
@@ -193,7 +299,7 @@ internal sealed partial class MainForm : Form
                 }
             }
 
-            return; // present and either healthy or we've done what we can — stop polling
+            return; // present and either healthy or we've done what we can - stop polling
         }
     }
 
@@ -205,7 +311,7 @@ internal sealed partial class MainForm : Form
         {
             Invoke(() =>
             {
-                SetStatus($"Driver setup needed — BD04: {driverState.Hid}, BD01: {driverState.Comms}");
+                SetStatus($"Driver setup needed - BD04: {driverState.Hid}, BD01: {driverState.Comms}");
                 using var dlg = new DriverSetupForm(driverState);
                 dlg.ShowDialog(this);
                 btnConnect.Text    = "Connect";
@@ -263,7 +369,7 @@ internal sealed partial class MainForm : Form
                         }
                         else
                         {
-                            // Restart didn't help — likely a competing driver (NeoManager etc.) won.
+                            // Restart didn't help - likely a competing driver (NeoManager etc.) won.
                             NeoSyncHelperClient.Send("FORCE_BD01");
                             restartAttempted = false; // allow one more restart after force-install
                         }
@@ -312,7 +418,7 @@ internal sealed partial class MainForm : Form
         }
 
         // Step 2: open bulk transport (device was already in comms mode).
-        // Poll briefly — WinUSB may have just finished loading after a fresh install.
+        // Poll briefly - WinUSB may have just finished loading after a fresh install.
         const int step2MaxMs = 10_000;
         const int step2PollMs = 300;
         int step2Elapsed = 0;
@@ -329,7 +435,7 @@ internal sealed partial class MainForm : Form
             step2Elapsed += step2PollMs;
         }
 
-        File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss}] TryOpen={transport is not null} — {tryOpenDiag}\n");
+        File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss}] TryOpen={transport is not null} - {tryOpenDiag}\n");
         if (transport is null)
         {
             Invoke(() =>
@@ -367,9 +473,14 @@ internal sealed partial class MainForm : Form
             // Strip trailing null padding, decode as Mac Roman, normalise to Windows CRLF.
             string text = ConvertAlphaWordBytes(data);
 
-            // Write directly to the user's chosen path — no temp files
+            // Write directly to the user's chosen path - no temp files
             File.WriteAllText(destPath, text, new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
             Invoke(() => SetStatus($"Saved to {destPath}"));
+        }
+        catch (Exception ex)
+        {
+            // e.g. destination file open/locked in another app, read-only, or permission denied.
+            Invoke(() => SetStatus($"Could not save file: {ex.Message}"));
         }
         finally
         {
@@ -379,7 +490,7 @@ internal sealed partial class MainForm : Form
 
     /// <summary>
     /// Converts raw AlphaWord file bytes to a clean Unicode string.
-    /// Ported from ASAlphaWordFile::exportText() — Copyright (c) 2008-2013 tSoniq.
+    /// Ported from ASAlphaWordFile::exportText() - Copyright (c) 2008-2013 tSoniq.
     /// </summary>
     private static string ConvertAlphaWordBytes(byte[] data)
     {
@@ -540,7 +651,7 @@ internal sealed partial class MainForm : Form
             if (enc.Length == 1)
             {
                 byte b = enc[0];
-                // Codes 0xa1–0xbf are AlphaWord control codes — wrap in escape {0xb0, b, 0xb0}
+                // Codes 0xa1–0xbf are AlphaWord control codes - wrap in escape {0xb0, b, 0xb0}
                 if (b >= 0xa1 && b <= 0xbf)
                     { result.Add(0xb0); result.Add(b); result.Add(0xb0); }
                 else
@@ -570,7 +681,7 @@ internal sealed partial class MainForm : Form
     {
         var results = new List<string>();
         string afterXml = after.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss") + ".000Z";
-        // XPath time filter — keeps the scan fast even on large logs.
+        // XPath time filter - keeps the scan fast even on large logs.
         string xpathFilter = $"*[System[TimeCreated[@SystemTime>='{afterXml}']]]";
         string[] channels  = ["System", "Microsoft-Windows-Kernel-PnP/Configuration"];
         foreach (string channel in channels)
@@ -620,7 +731,7 @@ internal sealed partial class MainForm : Form
         try { Clipboard.SetText(dump); } catch { }
         MessageBox.Show(this,
             $"Diagnostics copied to clipboard and appended to:\n{logPath}",
-            "NeoSync — USB Diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            "NeoSync - USB Diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     // ── UI helpers ────────────────────────────────────────────────────────────
@@ -648,8 +759,28 @@ internal sealed partial class MainForm : Form
             {
                 NeoFileAttributes? attr = _device?.GetFileAttributes(applet, i);
                 string label = attr?.FileName is { Length: > 0 } name ? name : $"File {i}";
+                bool hasContent = attr is not null && attr.AllocSize > attr.MinSize;
+                if (attr is not null)
+                {
+                    // MinSize is a constant minimum block allocation (always 512 in practice),
+                    // not the file's actual content size -- AllocSize is the one that varies
+                    // per file, and equals MinSize exactly when the file has no content.
+                    label += hasContent ? $"  ({FormatFileSize(attr.AllocSize)})" : "  (empty)";
+                }
                 var fileNode = new TreeNode(label) { Tag = (applet, i) };
                 appletNode.Nodes.Add(fileNode);
+
+                // AlphaWord-only: other applets' files aren't plain text, so a text preview
+                // wouldn't be meaningful. Every file still gets a child node (blank if no
+                // preview) so empty and non-empty files take up the same vertical space.
+                string? preview = isAlphaWord && hasContent ? GetFilePreview(applet, i) : null;
+                var previewNode = new TreeNode(preview ?? string.Empty)
+                {
+                    ForeColor = SystemColors.GrayText,
+                    NodeFont  = new Font(treeFiles.Font, FontStyle.Italic)
+                };
+                fileNode.Nodes.Add(previewNode);
+                fileNode.Expand();
             }
 
             appletNode.Expand();
@@ -659,11 +790,42 @@ internal sealed partial class MainForm : Form
         treeFiles.EndUpdate();
 
         bool hasFiles = applets.Any(a => a.FileCount > 0);
-        SetStatus(hasFiles ? "Ready." : "Connected \u2014 no files found.");
-        btnConnect.Text    = "Disconnect";
-        btnConnect.Enabled = true;
+        SetStatus(hasFiles ? "Ready." : "Connected - no files found.");
+        btnConnect.Text      = "Disconnect";
+        btnConnect.Enabled   = true;
+        btnQuickSync.Enabled = true;
+    }
+
+    private static string FormatFileSize(uint bytes)
+        => bytes < 1024 ? $"{bytes} B" : $"{bytes / 1024.0:0.#} KB";
+
+    /// <summary>Reads a file's content and returns its first few words as a preview, or
+    /// null if it couldn't be read. Truncated with an ellipsis regardless of length.</summary>
+    private string? GetFilePreview(NeoApplet applet, int fileIndex, int maxWords = 8)
+    {
+        byte[]? data = _device?.ReadFile(applet, fileIndex);
+        if (data is null || data.Length == 0) return null;
+
+        try
+        {
+            string text = ConvertAlphaWordBytes(data);
+            string[] words = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length == 0) return null;
+            return string.Join(' ', words.Take(maxWords)) + " …";
+        }
+        catch
+        {
+            return null;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(data);
+        }
     }
 
     private void SetStatus(string text)
-        => lblStatus.Text = text;
+    {
+        lblStatus.Text = text;
+        lblStatus.ToolTipText = text; // full message on hover in case it's too long to fit
+    }
 }

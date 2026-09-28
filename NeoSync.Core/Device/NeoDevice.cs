@@ -1,5 +1,5 @@
 // Core AlphaSmart Neo device protocol.
-// Ported from ASDevice.cc/h — Copyright (c) 2008-2013 tSoniq (original reverse-engineering).
+// Ported from ASDevice.cc/h - Copyright (c) 2008-2013 tSoniq (original reverse-engineering).
 //
 // Security notes:
 //   - Byte arrays holding file content are zeroed after use.
@@ -85,7 +85,7 @@ public sealed class NeoDevice : IDisposable
         var msg = new NeoMessage(NeoMessageCodes.RequestRestart);
         if (!SendMessage(msg)) return;
 
-        // Wait for the response — the device reboots after sending it
+        // Wait for the response - the device reboots after sending it
         var response = new NeoMessage();
         ReceiveMessage(response); // ignore result; device may cut off before responding
 
@@ -94,7 +94,7 @@ public sealed class NeoDevice : IDisposable
 
     /// <summary>
     /// Returns available RAM on the device in bytes (0 on error).
-    /// Mirrors ASDevice::systemMemory — uses GET_AVAIL_SPACE.
+    /// Mirrors ASDevice::systemMemory - uses GET_AVAIL_SPACE.
     /// </summary>
     public uint GetAvailableRam()
     {
@@ -425,7 +425,7 @@ public sealed class NeoDevice : IDisposable
 
         if (!Exchange(msg)) return false;
 
-        if (msg.Command == NeoMessageCodes.ErrorParameter) return true; // file not found — not an error
+        if (msg.Command == NeoMessageCodes.ErrorParameter) return true; // file not found - not an error
 
         if (msg.Command != NeoMessageCodes.ResponseGetFileAttributes) return false;
 

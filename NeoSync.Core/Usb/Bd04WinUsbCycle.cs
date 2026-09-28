@@ -35,10 +35,10 @@ public static class Bd04WinUsbCycle
             return null;
         }
 
-        // pnputil /add-driver ... /install stages AND force-applies in one step — this
+        // pnputil /add-driver ... /install stages AND force-applies in one step - this
         // reliably replaces the running inbox HidUsb driver. The Win32
         // UpdateDriverForPlugAndPlayDevicesW API was tried first but proved unreliable
-        // (staged fine, reported success, but WinUSB never actually finished binding —
+        // (staged fine, reported success, but WinUSB never actually finished binding -
         // confirmed by testing pnputil directly against the same INF, which worked
         // immediately every time).
         string output = RunPnputil($"/add-driver \"{bd04InfPath}\" /install");

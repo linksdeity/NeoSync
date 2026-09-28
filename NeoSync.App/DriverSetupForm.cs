@@ -19,7 +19,7 @@ internal sealed class DriverSetupForm : Form
 
     private void InitializeUi()
     {
-        Text            = "NeoSync — Driver Setup";
+        Text            = "NeoSync - Driver Setup";
         AutoSize        = true;
         AutoSizeMode    = AutoSizeMode.GrowAndShrink;
         MinimumSize     = new Size(560, 0);
@@ -51,7 +51,7 @@ internal sealed class DriverSetupForm : Form
 
         // ── Explanation ───────────────────────────────────────────────────
         // AutoSize Label with a bounded width (not a Dock=Fill RichTextBox in a
-        // Percent row) so the AutoSize form can compute a real preferred size —
+        // Percent row) so the AutoSize form can compute a real preferred size -
         // this is what was causing text/buttons to render clipped previously.
         var lblExplanation = new Label
         {
@@ -124,8 +124,8 @@ internal sealed class DriverSetupForm : Form
                 NeoDriverKind.NotSeen            => "not yet seen on this PC",
                 NeoDriverKind.WindowsHid         => "using the Windows keyboard driver",
                 NeoDriverKind.RenaissanceLearning => "using the old AlphaSmart Manager driver",
-                NeoDriverKind.DriverError        => "driver failed to start \u2014 reinstall needed",
-                NeoDriverKind.Other              => "driver was removed or replaced \u2014 reinstall needed",
+                NeoDriverKind.DriverError        => "driver failed to start - reinstall needed",
+                NeoDriverKind.Other              => "driver was removed or replaced - reinstall needed",
                 _                                => $"driver state: {_state.Hid}"
             };
             lines.Add($"\u2022 Keyboard mode (BD04): {current}.\r\n");
@@ -137,8 +137,8 @@ internal sealed class DriverSetupForm : Form
             {
                 NeoDriverKind.NotSeen            => "not yet seen on this PC",
                 NeoDriverKind.RenaissanceLearning => "using the old AlphaSmart Manager driver",
-                NeoDriverKind.DriverError        => "driver failed to start \u2014 reinstall needed",
-                NeoDriverKind.Other              => "driver was removed or replaced \u2014 reinstall needed",
+                NeoDriverKind.DriverError        => "driver failed to start - reinstall needed",
+                NeoDriverKind.Other              => "driver was removed or replaced - reinstall needed",
                 _                                => $"driver state: {_state.Comms}"
             };
             lines.Add($"\u2022 Transfer mode (BD01): {current}.\r\n");
@@ -156,13 +156,13 @@ internal sealed class DriverSetupForm : Form
         Color  col  = ok ? Color.DarkGreen : Color.Firebrick;
         string desc = kind switch
         {
-            NeoDriverKind.WinUsb             => "WinUSB \u2014 ready",
-            NeoDriverKind.DriverError        => "WinUSB failed to start \u2014 reinstall needed",
-            NeoDriverKind.NotSeen            => "not seen \u2014 needs setup",
-            NeoDriverKind.WindowsHid         => "Windows HID keyboard \u2014 ready",
-            NeoDriverKind.RenaissanceLearning => "AlphaSmart Manager driver \u2014 needs replacing",
-            NeoDriverKind.Other              => "driver removed or unsupported \u2014 needs WinUSB",
-            _                                => $"{kind} \u2014 needs WinUSB"
+            NeoDriverKind.WinUsb             => "WinUSB - ready",
+            NeoDriverKind.DriverError        => "WinUSB failed to start - reinstall needed",
+            NeoDriverKind.NotSeen            => "not seen - needs setup",
+            NeoDriverKind.WindowsHid         => "Windows HID keyboard - ready",
+            NeoDriverKind.RenaissanceLearning => "AlphaSmart Manager driver - needs replacing",
+            NeoDriverKind.Other              => "driver removed or unsupported - needs WinUSB",
+            _                                => $"{kind} - needs WinUSB"
         };
         return new Label
         {
@@ -187,7 +187,7 @@ internal sealed class DriverSetupForm : Form
             if (!setupResult.StartsWith("OK"))
             {
                 MessageBox.Show(this, $"Driver staging failed: {setupResult}",
-                    "NeoSync \u2014 Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -196,7 +196,7 @@ internal sealed class DriverSetupForm : Form
                     "Then plug it in and wait for the USB connect sound (or the keyboard light).\n" +
                     "Click OK once Windows has recognised it as a keyboard.\n\n" +
                     "Click Cancel to skip (the driver is staged and will apply when NeoSync connects).",
-                    "NeoSync \u2014 Driver Setup", MessageBoxButtons.OKCancel, MessageBoxIcon.Information)
+                    "NeoSync - Driver Setup", MessageBoxButtons.OKCancel, MessageBoxIcon.Information)
                 == DialogResult.Cancel) return;
 
             Cursor  = Cursors.WaitCursor;
@@ -209,7 +209,7 @@ internal sealed class DriverSetupForm : Form
             if (switchResult != "OK")
             {
                 msg = "The driver has been staged but the mode switch failed (device may not be ready).\n\n" +
-                      "Click Connect in the main window \u2014 the driver will be applied automatically.";
+                      "Click Connect in the main window - the driver will be applied automatically.";
             }
             else
             {
@@ -223,7 +223,7 @@ internal sealed class DriverSetupForm : Form
                     ? "Driver setup complete. Click Connect in the main window to start."
                     : "The switch succeeded but BD01 took too long to enumerate.\n\nClick Connect in the main window.";
             }
-            MessageBox.Show(this, msg, "NeoSync \u2014 Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, msg, "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
             DialogResult = DialogResult.OK;
             Close();
         }
@@ -263,7 +263,7 @@ internal sealed class DriverSetupForm : Form
                 MessageBox.Show(this,
                     "WinUSB drivers installed successfully!\r\n\r\n" +
                     "Unplug your Neo, then plug it back in and click Connect.",
-                    "NeoSync \u2014 Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 DialogResult = DialogResult.OK;
                 Close();
             }
@@ -274,7 +274,7 @@ internal sealed class DriverSetupForm : Form
                 if (!ok01) msg += $"BD01 (transfer mode): {NeoDriverInstaller.GetErrorString(rc01)}\r\n";
                 if (rc04 == NeoDriverInstaller.WDI_ERROR_NEEDS_ADMIN || rc01 == NeoDriverInstaller.WDI_ERROR_NEEDS_ADMIN)
                     msg += "\r\nPlease run NeoSync as Administrator for driver installation.";
-                MessageBox.Show(this, msg, "NeoSync \u2014 Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, msg, "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
         catch (Exception ex)
@@ -283,12 +283,12 @@ internal sealed class DriverSetupForm : Form
                 || ex.Message.Contains("Application Control", StringComparison.OrdinalIgnoreCase);
             string detail = policyBlock
                 ? "Windows Application Control blocked libwdi.dll.\r\n\r\n" +
-                  "Option 1 \u2014 unblock the file (if flagged as \u201cfrom internet\u201d):\r\n" +
+                  "Option 1 - unblock the file (if flagged as \u201cfrom internet\u201d):\r\n" +
                   $"  Right-click: {dllPath}\r\n  \u2192 Properties \u2192 Unblock\r\n\r\n" +
-                  "Option 2 \u2014 disable Smart App Control:\r\n" +
+                  "Option 2 - disable Smart App Control:\r\n" +
                   "  Windows Security \u2192 App & browser control \u2192 Smart App Control \u2192 Off"
                 : $"Failed to load driver installer:\r\n{ex.Message}";
-            MessageBox.Show(this, detail, "NeoSync \u2014 Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, detail, "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         finally
         {

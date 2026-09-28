@@ -235,7 +235,7 @@ public static class NeoDriverInstaller
 
         if (!bd01AlreadyPresent)
         {
-            // Try HID interface 1 first — no WinUSB on BD04, keyboard stays active.
+            // Try HID interface 1 first - no WinUSB on BD04, keyboard stays active.
             bool switched = NeoHidSwitcher.TrySwitchViaHid(out string switchDiag);
             DbgLog.W($"InstallBoth: HID switch: ok={switched} diag={switchDiag}");
 
@@ -250,7 +250,7 @@ public static class NeoDriverInstaller
                 }
                 else
                 {
-                    DbgLog.W("InstallBoth: BD04 already WinUSB — skipping install");
+                    DbgLog.W("InstallBoth: BD04 already WinUSB - skipping install");
                 }
 
                 // Retry WinUSB mode switch (device may still be re-enumerating after install).
@@ -260,7 +260,7 @@ public static class NeoDriverInstaller
                     switched = NeoHidSwitcher.TrySwitchToCommsMode(out switchDiag);
                     if (switched) break;
                     if (!switchDiag.Contains("not found", StringComparison.OrdinalIgnoreCase)) break;
-                    DbgLog.W($"InstallBoth: mode switch attempt {i + 1} — retrying");
+                    DbgLog.W($"InstallBoth: mode switch attempt {i + 1} - retrying");
                     System.Threading.Thread.Sleep(500);
                 }
                 DbgLog.W($"InstallBoth: WinUSB switch: ok={switched} diag={switchDiag}");
@@ -272,7 +272,7 @@ public static class NeoDriverInstaller
         }
         else
         {
-            DbgLog.W("InstallBoth: BD01 already present — force-installing directly");
+            DbgLog.W("InstallBoth: BD01 already present - force-installing directly");
         }
 
         int rc01 = InstallWinUsb(Vid, 0xBD01, "AlphaSmart Neo (Comms)", Path.Combine(workDir, "bd01"), parentHwnd);
@@ -296,7 +296,7 @@ public static class NeoDriverInstaller
 
             if (commsKind != NeoDriverKind.WinUsb)
             {
-                DbgLog.W("InstallBoth: BD01 not WinUsb after poll — retrying force-install");
+                DbgLog.W("InstallBoth: BD01 not WinUsb after poll - retrying force-install");
                 rc01 = InstallWinUsb(Vid, 0xBD01, "AlphaSmart Neo (Comms)", Path.Combine(workDir, "bd01"), parentHwnd);
                 DbgLog.W($"InstallBoth: BD01 retry rc={rc01}");
             }
@@ -366,7 +366,7 @@ public static class NeoDriverInstaller
         foreach (string inf in matches)
         {
             var (ok, output) = RemoveWinUsb(inf);
-            sb.AppendLine($"{inf}: {(ok ? "removed" : "failed")} — {output.Trim()}");
+            sb.AppendLine($"{inf}: {(ok ? "removed" : "failed")} - {output.Trim()}");
             if (ok) anyOk = true;
         }
         return (anyOk, sb.ToString().Trim());

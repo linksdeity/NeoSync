@@ -109,12 +109,12 @@ internal sealed class NeoSyncWorker : BackgroundService
         NeoUsbDiag.ClearReinstallFlag("VID_081E&PID_BD01");
 
         // A retry loop here (reinstall + resend within seconds) proved worse than a single
-        // clean attempt in testing — repeated back-to-back WinUSB install/reset cycles can
+        // clean attempt in testing - repeated back-to-back WinUSB install/reset cycles can
         // wedge the port entirely. Do one attempt; if it fails, tell the user to physically
         // replug (a real reset) and click Connect again rather than retrying automatically.
         var (bd01Id, diag) = TrySwitchOnce(log);
 
-        if (bd01Id is null) return $"FAIL:{diag} — try unplugging and replugging the Neo, then Connect again";
+        if (bd01Id is null) return $"FAIL:{diag} - try unplugging and replugging the Neo, then Connect again";
         NeoUsbDiag.GrantDeviceUserAccess(bd01Id);
         return "OK";
     }
@@ -129,7 +129,7 @@ internal sealed class NeoSyncWorker : BackgroundService
         File.AppendAllText(log, $"[{DateTime.Now:HH:mm:ss}] SWITCH start BD04={state.Hid} BD01={state.Comms}\n");
 
         // Fast path: BD01 may already be fully switched and ready (e.g. from a previous
-        // Connect this session) — BD04 may not even physically exist anymore at this point,
+        // Connect this session) - BD04 may not even physically exist anymore at this point,
         // so skip straight past any BD04 install attempt (which would otherwise burn a full
         // 30s WaitForWinUsb timeout looking for a device that's no longer there).
         if (state.Comms == NeoDriverKind.WinUsb)
@@ -137,13 +137,43 @@ internal sealed class NeoSyncWorker : BackgroundService
             string? existingBd01 = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD01");
             if (existingBd01 is not null && NeoUsbDiag.GetDevicePresence(existingBd01).Present)
             {
-                _logger.LogWarning("SWITCH: BD01 already present and ready — skipping switch");
+                _logger.LogWarning("SWITCH: BD01 already present and ready - skipping switch");
                 return (existingBd01, "");
             }
         }
 
+        // BD01 can already be switched (e.g. the installer's own driver-setup step just did
+        // it) but land in transient CM_PROB_FAILED_START before the app ever connects - that
+        // shows up here as Comms=DriverError, not WinUsb, so the fast path above misses it and
+        // would otherwise fall through into a doomed BD04 reinstall attempt (BD04 no longer
+        // physically exists once the Neo has already switched). Self-heal it directly instead.
+        if (state.Comms == NeoDriverKind.DriverError)
+        {
+            string? bd01Instance = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD01");
+            if (bd01Instance is not null)
+            {
+                for (int attempt = 1; attempt <= 2 && state.Comms == NeoDriverKind.DriverError; attempt++)
+                {
+                    _logger.LogWarning("SWITCH: BD01 already switched but in error state - restarting device (attempt {n})", attempt);
+                    Bd04WinUsbCycle.RestartDevice(bd01Instance);
+                    for (int i = 0; i < 60; i++) // up to ~12s
+                    {
+                        Thread.Sleep(200);
+                        state = NeoDriverState.Detect();
+                        if (state.Comms != NeoDriverKind.DriverError) break;
+                    }
+                }
+                _logger.LogWarning("SWITCH: BD01 after restart={bd01}", state.Comms);
+
+                if (state.Comms == NeoDriverKind.WinUsb && NeoUsbDiag.GetDevicePresence(bd01Instance).Present)
+                    return (bd01Instance, "");
+
+                return (null, "BD01 was already switched but failed to start - unplug and replug the Neo, then try Connect again");
+            }
+        }
+
         // BD04 sometimes lands in transient CM_PROB_FAILED_START purely from Windows'
-        // own auto-enumeration on plug-in, before we've touched anything — a soft device
+        // own auto-enumeration on plug-in, before we've touched anything - a soft device
         // restart (not a reinstall) reliably clears this most of the time, but can take
         // 10+ seconds to settle and occasionally needs more than one restart call.
         if (state.Hid == NeoDriverKind.DriverError)
@@ -153,7 +183,7 @@ internal sealed class NeoSyncWorker : BackgroundService
             {
                 for (int attempt = 1; attempt <= 2 && state.Hid == NeoDriverKind.DriverError; attempt++)
                 {
-                    _logger.LogWarning("SWITCH: BD04 in error state — restarting device (attempt {n})", attempt);
+                    _logger.LogWarning("SWITCH: BD04 in error state - restarting device (attempt {n})", attempt);
                     Bd04WinUsbCycle.RestartDevice(bd04Instance);
                     for (int i = 0; i < 60; i++) // up to ~12s
                     {
@@ -166,7 +196,7 @@ internal sealed class NeoSyncWorker : BackgroundService
             }
         }
 
-        // BD04 has only one real USB interface — no composite split needed.
+        // BD04 has only one real USB interface - no composite split needed.
         // wIndex=1 in the mode-switch request is a firmware-level tag, not a real interface number.
         // Composite (usbccgp) doesn't expose a WinUSB handle, so treat it like "needs install" too.
         if (state.Hid != NeoDriverKind.WinUsb)
@@ -176,7 +206,7 @@ internal sealed class NeoSyncWorker : BackgroundService
             if (state.Hid == NeoDriverKind.Composite)
             {
                 // A stale composite driver in the store can keep outranking a fresh WinUSB
-                // force-install even after UpdateDriverForPlugAndPlayDevicesW "succeeds" —
+                // force-install even after UpdateDriverForPlugAndPlayDevicesW "succeeds" -
                 // purge it so the WinUSB install below actually takes effect.
                 Bd04WinUsbCycle.RemoveStagedByOriginalName("neosync_bd04_composite.inf");
             }
@@ -184,7 +214,7 @@ internal sealed class NeoSyncWorker : BackgroundService
             _logger.LogWarning("SWITCH: Install bd04Oem={oem}", bd04Oem ?? "(null)");
             if (bd04Oem is null)
             {
-                return (null, "BD04 WinUSB install failed — check that the Neo is connected");
+                return (null, "BD04 WinUSB install failed - check that the Neo is connected");
             }
             bool winUsbReady = Bd04WinUsbCycle.WaitForWinUsb(30_000);
             _logger.LogWarning("SWITCH: WaitForWinUsb={ready}", winUsbReady);
@@ -194,20 +224,20 @@ internal sealed class NeoSyncWorker : BackgroundService
                 // to progressively wedge this device's Windows PnP state until only a reboot
                 // fixes it. Leave the driver staged; a physical replug is the more reliable
                 // recovery than another install/remove cycle.
-                return (null, "BD04 did not re-enumerate with WinUSB — unplug and replug the Neo, then try Connect again");
+                return (null, "BD04 did not re-enumerate with WinUSB - unplug and replug the Neo, then try Connect again");
             }
         }
 
         bool switched = NeoHidSwitcher.TrySwitchToCommsMode(out string diag);
         _logger.LogWarning("SWITCH: attempt switched={ok} diag={diag}", switched, diag);
-        File.AppendAllText(log, $"[{DateTime.Now:HH:mm:ss}] attempt={switched} — {diag}\n");
+        File.AppendAllText(log, $"[{DateTime.Now:HH:mm:ss}] attempt={switched} - {diag}\n");
 
         if (!switched)
         {
-            return (null, $"mode switch failed — {diag}");
+            return (null, $"mode switch failed - {diag}");
         }
 
-        // Don't touch BD04's driver — the Neo may still be physically resetting into BD01,
+        // Don't touch BD04's driver - the Neo may still be physically resetting into BD01,
         // and removing/uninstalling a driver here can trigger a port-level PnP event that
         // interrupts that in-progress reset before BD01 has a chance to settle. We also no
         // longer restore BD04 to its inbox HID driver automatically after success: repeated
@@ -215,7 +245,7 @@ internal sealed class NeoSyncWorker : BackgroundService
 
         // BD01 PnP auto-load is unreliable; force-install the moment BD01 appears physically.
         // The freshly-installed WinUSB driver sometimes lands in CM_PROB_FAILED_START
-        // transiently — a soft device restart (not a reinstall) reliably clears this, but
+        // transiently - a soft device restart (not a reinstall) reliably clears this, but
         // can take 10+ seconds to fully settle, so give it generous room here rather than
         // falling through to the app's own (slower) fallback polling.
         string bd01Inf = Path.Combine(AppContext.BaseDirectory, "driver", "neosync_bd01.inf");
@@ -232,7 +262,7 @@ internal sealed class NeoSyncWorker : BackgroundService
             if (!forceInstalled)
             {
                 forceInstalled = true;
-                _logger.LogWarning("SWITCH: BD01 present — force-installing WinUSB");
+                _logger.LogWarning("SWITCH: BD01 present - force-installing WinUSB");
                 if (File.Exists(bd01Inf))
                     Bd04WinUsbCycle.ForceInstall("USB\\VID_081E&PID_BD01", bd01Inf);
                 Thread.Sleep(500);
@@ -244,12 +274,12 @@ internal sealed class NeoSyncWorker : BackgroundService
             else if (!restarted && i > 10) // ~2s after force-install with still no presence
             {
                 restarted = true;
-                _logger.LogWarning("SWITCH: BD01 still not ready — restarting device");
+                _logger.LogWarning("SWITCH: BD01 still not ready - restarting device");
                 Bd04WinUsbCycle.RestartDevice(candidate);
                 Thread.Sleep(2_000);
             }
         }
-        _logger.LogWarning("SWITCH: bd01Id={id}", bd01Id ?? "(null — BD01 did not appear)");
+        _logger.LogWarning("SWITCH: bd01Id={id}", bd01Id ?? "(null - BD01 did not appear)");
 
         return (bd01Id, bd01Id is null ? "BD01 did not appear after mode switch" : "");
     }
@@ -294,11 +324,11 @@ internal sealed class NeoSyncWorker : BackgroundService
         // after a forced driver update, so always purge it before installing anything else.
         Bd04WinUsbCycle.RemoveStagedByOriginalName("neosync_bd04_composite.inf");
 
-        // BD01: stage only — WinUSB is applied on first connection via ForceInstall in CmdSwitch.
+        // BD01: stage only - WinUSB is applied on first connection via ForceInstall in CmdSwitch.
         Bd04WinUsbCycle.RemoveStagedByOriginalName("neosync_bd01.inf");
         RunProcess(Path.Combine(sys, "pnputil.exe"), $"/add-driver \"{bd01Inf}\"");
 
-        // BD04: stage only — CmdSwitch installs/removes WinUSB around each mode switch.
+        // BD04: stage only - CmdSwitch installs/removes WinUSB around each mode switch.
         // If the Neo is currently stuck on a bad driver (e.g. usbccgp from earlier testing),
         // force-replace it now so it comes back as a clean keyboard on next replug.
         Bd04WinUsbCycle.RemoveStagedByOriginalName("neosync_bd04.inf");

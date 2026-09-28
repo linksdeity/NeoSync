@@ -1,4 +1,4 @@
-NeoSync — License and Disclaimer
+NeoSync - License and Disclaimer
 
 NeoSync is unofficial, independently developed software for transferring
 files to and from the AlphaSmart Neo. It is not affiliated with, endorsed by,
@@ -12,6 +12,12 @@ device. This process is generally safe and reversible (uninstalling NeoSync
 removes the driver package and restores the device's default Windows
 keyboard driver), but as with any software that installs device drivers,
 there is inherent risk.
+
+IMPORTANT: once NeoSync's driver is installed, the AlphaSmart Neo will no
+longer function as a standalone USB keyboard on this computer (its "send
+text" feature) until the driver is removed again (Advanced > Remove WinUSB
+drivers in NeoSync). This is a deliberate tradeoff required to communicate
+with the device for file transfer.
 
 THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

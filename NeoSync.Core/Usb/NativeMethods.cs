@@ -1,5 +1,5 @@
 // Windows P/Invoke declarations for: setupapi.dll, hid.dll, winusb.dll, kernel32.dll.
-// All USB access goes through these Windows-native APIs — no third-party packages.
+// All USB access goes through these Windows-native APIs - no third-party packages.
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 

@@ -1,4 +1,4 @@
-# NeoSync — Development Notes
+# NeoSync - Development Notes
 
 Windows port of [AlphaSync](https://github.com/tSoniq/alphasync) (macOS) for the AlphaSmart Neo.
 Original Mac driver code: C:\repos\alphasync (reference only, not built here).
@@ -17,16 +17,16 @@ Original Mac driver code: C:\repos\alphasync (reference only, not built here).
 | Disconnect + Neo reboot to keyboard mode | ✅ Working |
 | System applet filter (default = AlphaWord only) | ✅ Working |
 | Mode switch BD04 → BD01 (auto) | ✅ Working via WinUSB (HID MI_01 not present on Neo) |
-| WinUSB driver install (libwdi) | ✅ Working — in-app DriverSetupForm, no Zadig needed |
-| WinUSB driver remove | ✅ Working — scans all accumulated OEM INFs and deletes them |
-| Remove/reinstall cycle | ✅ Working — tested end-to-end multiple times |
+| WinUSB driver install (libwdi) | ✅ Working - in-app DriverSetupForm, no Zadig needed |
+| WinUSB driver remove | ✅ Working - scans all accumulated OEM INFs and deletes them |
+| Remove/reinstall cycle | ✅ Working - tested end-to-end multiple times |
 | BD01 WinUSB transient load failure | ⚠️ Detected at 5s with actionable guidance; may need 2–3 Connect attempts |
 
 ---
 
 ## One-time setup required (Zadig)
 
-> ⚠️ **HIGH PRIORITY for distribution** — see "Driver distribution problem" section below.
+> ⚠️ **HIGH PRIORITY for distribution** - see "Driver distribution problem" section below.
 
 The user must run [Zadig](https://zadig.akeo.ie) twice per machine:
 
@@ -50,29 +50,29 @@ to automate driver installation in a first-run setup step.
 ## USB / Protocol details
 
 ### Device VID/PIDs
-- `0x081e / 0xbd04` — HID keyboard mode (default on power-up)
-- `0x081e / 0xbd01` — Comms mode (bulk USB, used for file transfer)
+- `0x081e / 0xbd04` - HID keyboard mode (default on power-up)
+- `0x081e / 0xbd01` - Comms mode (bulk USB, used for file transfer)
 
 ### Mode switch sequence
 Send 5 USB control transfers to BD04 via WinUSB:
 ```
-bmRequestType = 0x20  (Class | Device | Host→Device)  ⚠️ NOT 0x21 (Interface) — see below
+bmRequestType = 0x20  (Class | Device | Host→Device)  ⚠️ NOT 0x21 (Interface) - see below
 bRequest      = 0x09  (HID SET_REPORT)
 wValue        = 0x0200 (Output report type=2, ID=0)
-wIndex        = 0x0001 (arbitrary firmware-level tag — BD04 has only ONE real interface)
+wIndex        = 0x0001 (arbitrary firmware-level tag - BD04 has only ONE real interface)
 wLength       = 0x0001
 data          = 0xe0, 0xe1, 0xe2, 0xe3, 0xe4  (one byte per transfer)
 ```
 Preceded by a standard `SET_CONFIGURATION` (wValue=1) control transfer.
 Confirmed against `neotools` (Linux, `C:\repos\neotools\neotools\device.py`
-`flip_to_comms_mode()`), which is authoritative here — the tSoniq/Mac docs we
+`flip_to_comms_mode()`), which is authoritative here - the tSoniq/Mac docs we
 originally worked from implied `bmRequestType=0x21` (Class|**Interface**), which
 is wrong and was the root cause of a multi-day debugging detour (including a
-dead-end composite/MI_01 USB split attempt — BD04 does not have a second
+dead-end composite/MI_01 USB split attempt - BD04 does not have a second
 interface, so there's nothing to split).
 Source: `NeoHidSwitcher.TrySwitchToCommsMode()` in `NeoSync.Core/Usb/`.
 **Working as of 2026-09-27:** send once, wait up to 10s for BD01 to enumerate.
-Do not resend if the transfer succeeded — the Neo may already be mid-reset, and
+Do not resend if the transfer succeeded - the Neo may already be mid-reset, and
 resending to a disappearing device returns Win32 error 22 (`ERROR_BAD_COMMAND`)
 and can disrupt the switch in progress.
 
@@ -92,7 +92,7 @@ The WinUSB interface GUID (`7060C8A1-...`) is written by Zadig to:
 
 ### Bulk pipe enumeration
 `WINUSB_PIPE_INFORMATION.PipeType` is a 4-byte `uint` (`USBD_PIPE_TYPE` enum), NOT a byte.
-`UsbdPipeTypeBulk = 2` (not 3 — Interrupt is 3). Both bugs were in the original code and 
+`UsbdPipeTypeBulk = 2` (not 3 - Interrupt is 3). Both bugs were in the original code and 
 caused no bulk pipes to be found. Fixed in `NativeMethods.cs`.
 
 ### ASM Protocol
@@ -117,7 +117,7 @@ File writes use a BLOCK_WRITE loop:
 
 ## AlphaWord file format
 
-Source: `alphasync/AlphaSync/Driver/ASAlphaWordFile.cc` — `exportText()` / `importText()`
+Source: `alphasync/AlphaSync/Driver/ASAlphaWordFile.cc` - `exportText()` / `importText()`
 
 ### Decoding (download)
 | Byte | Meaning |
@@ -140,7 +140,7 @@ Source: `alphasync/AlphaSync/Driver/ASAlphaWordFile.cc` — `exportText()` / `im
 - CP1252 chars in `0xa1–0xbf`: wrap in escape `{0xb0, byte, 0xb0}`
 - Other CP1252 (0x80–0xa0, 0xc0–0xff): stored as-is
 - File padded to minimum 512 bytes with `0xa7` fill bytes
-- **The Neo regenerates line-breaking hints on first open** — we don't need to insert them
+- **The Neo regenerates line-breaking hints on first open** - we don't need to insert them
 
 ### AlphaWord file count
 The applet header's `FileCount` field (offset 0x17) is **0** for AlphaWord even when files exist.
@@ -177,7 +177,7 @@ NeoSync.sln
 │   │   └── NeoFileAttributes.cs 40-byte binary attribute struct
 │   ├── Device/
 │   │   ├── NeoApplet.cs         Applet model (Name, FileCount, IsHidden, IsAlphaWord)
-│   │   └── NeoDevice.cs         Full protocol engine — all USB dialogue logic
+│   │   └── NeoDevice.cs         Full protocol engine - all USB dialogue logic
 │   └── Usb/
 │       ├── INeoTransport.cs     Read/write interface
 │       ├── NativeMethods.cs     P/Invoke: setupapi, hid, winusb, kernel32
@@ -192,7 +192,7 @@ NeoSync.sln
 
 ## ⚡ HIGH PRIORITY: Driver distribution problem
 
-**RESOLVED** — libwdi is now bundled and driver installation is handled in-app via `DriverSetupForm`.
+**RESOLVED** - libwdi is now bundled and driver installation is handled in-app via `DriverSetupForm`.
 See the "Driver lifecycle" section below for full details.
 
 The original Zadig-based manual setup is no longer required.
@@ -202,7 +202,7 @@ The original Zadig-based manual setup is no longer required.
 ## Known issues / future work
 
 ### Mode switch (BD04 → BD01) unreliable
-The Neo has **no HID MI_01 interface** — confirmed by device enumeration. The HID switch path
+The Neo has **no HID MI_01 interface** - confirmed by device enumeration. The HID switch path
 (`NeoHidSwitcher.TrySwitchViaHid`) always falls through to the WinUSB fallback on this device.
 
 WinUSB mode switch (5 control transfers to BD04 WinUSB) works reliably when BD04 WinUSB is
@@ -210,24 +210,24 @@ loaded. After mode switch, TryOpen succeeds at ~2.4s in the normal case.
 
 **Transient failure after driver update:** Windows sometimes fails to auto-load WinUSB on BD01
 after a fresh install (CM_PROB_FAILED_START or device doesn't enumerate). This is a Windows PnP
-timing issue — `UpdateDriverForPlugAndPlayDevicesU` (used during install) works reliably;
+timing issue - `UpdateDriverForPlugAndPlayDevicesU` (used during install) works reliably;
 subsequent PnP auto-loads do not always. Observed to self-resolve after 2–3 Connect attempts.
 The app now detects this at 5s and shows an actionable message.
 
 ### Features not yet implemented
-- **Rename files on device** — set file attributes (name field in ASFileAttributes)
-- **Create new file slots** — `createFile()` in ASDevice.cc (needs GET_USED_SPACE + SET_FILE_ATTRIBUTES + COMMIT + WRITE_RAW_FILE)
-- **Backup all files** — iterate all applets and download all files to a folder
-- **Auto-launch on device connect** — register for USB device arrival events
-- **Automatic mode switch on startup** — libwdi for driver install, then auto-switch
-- **File inspector** — display/edit file attributes (name, size, flags)
-- **Drag and drop** — drag .txt onto tree to upload, drag from tree to Explorer
+- **Rename files on device** - set file attributes (name field in ASFileAttributes)
+- **Create new file slots** - `createFile()` in ASDevice.cc (needs GET_USED_SPACE + SET_FILE_ATTRIBUTES + COMMIT + WRITE_RAW_FILE)
+- **Backup all files** - iterate all applets and download all files to a folder
+- **Auto-launch on device connect** - register for USB device arrival events
+- **Automatic mode switch on startup** - libwdi for driver install, then auto-switch
+- **File inspector** - display/edit file attributes (name, size, flags)
+- **Drag and drop** - drag .txt onto tree to upload, drag from tree to Explorer
 
 ### Security / privacy notes (from original design)
-- Zero 3rd-party NuGet runtime packages — all USB via Windows P/Invoke
+- Zero 3rd-party NuGet runtime packages - all USB via Windows P/Invoke
 - `CryptographicOperations.ZeroMemory()` called on all byte[] containing file content after transfer
-- No temp files — write directly to user-chosen path
-- No content logging — diagnostic log at `%TEMP%\neosync_diag.txt` logs only command codes/counts
+- No temp files - write directly to user-chosen path
+- No content logging - diagnostic log at `%TEMP%\neosync_diag.txt` logs only command codes/counts
   (this log should be removed or made opt-in before release)
 - INF file (`neosync.inf`) included in repo for future signed-driver distribution
 - Code signing required before any public release (Secure Boot blocks unsigned INF installs)
@@ -239,7 +239,7 @@ The app now detects this at 5s and shows an actionable message.
 ### Overview
 WinUSB must be installed on two VID/PIDs: BD04 (keyboard mode, for mode switch) and BD01
 (comms mode, for file transfer). The Neo has no HID MI_01 interface so WinUSB on BD04 is
-mandatory — the keyboard cannot be preserved.
+mandatory - the keyboard cannot be preserved.
 
 libwdi 1.5.1 is bundled at `NeoSync.App/native/libwdi.dll`. Each `wdi_prepare_driver` call
 stages a new OEM INF in `C:\Windows\INF`, generating a unique random device interface GUID.
@@ -247,19 +247,19 @@ stages a new OEM INF in `C:\Windows\INF`, generating a unique random device inte
 ### Install flow (`NeoDriverInstaller.InstallBoth`)
 1. If BD01 is already present (Neo in comms mode or `DriverError`): skip mode switch, force-install BD01 directly.
 2. Otherwise: try HID switch (always fails on Neo) → install BD04 WinUSB → retry mode switch loop (30×500ms) → 7s sleep for BD01 enumeration.
-3. Install BD01 WinUSB with `hardware_id` set — this calls `UpdateDriverForPlugAndPlayDevicesU` (force-install while connected).
+3. Install BD01 WinUSB with `hardware_id` set - this calls `UpdateDriverForPlugAndPlayDevicesU` (force-install while connected).
 4. After install: poll `NeoDriverState.Detect().Comms` for up to 15s. If still not `WinUsb`, retry install once.
-5. Success dialog says **"Unplug and replug your Neo, then click Connect"** — force-install on a connected device requires a clean re-enumeration before WinUSB is reliably accessible.
+5. Success dialog says **"Unplug and replug your Neo, then click Connect"** - force-install on a connected device requires a clean re-enumeration before WinUSB is reliably accessible.
 
 ### Remove flow (`NeoDriverInstaller.RemoveAllMatchingInfs`)
-Old approach (5-pass loop) was defeated by 29 accumulated OEM INFs — Windows kept reassigning fallbacks.
+Old approach (5-pass loop) was defeated by 29 accumulated OEM INFs - Windows kept reassigning fallbacks.
 
 New approach:
 1. Scan all `C:\Windows\INF\oem*.inf` files for VID_081E&PID_BD04 / VID_081E&PID_BD01 content.
 2. Delete every match via `pnputil /delete-driver <inf> /uninstall /force`.
 3. No INFs left = no fallback = device goes to "no driver" state.
 
-Recommend unplugging Neo before removing — avoids Windows PnP reassignment race.
+Recommend unplugging Neo before removing - avoids Windows PnP reassignment race.
 
 ### Connect flow (after install)
 After unplug/replug + clicking Connect:
@@ -274,13 +274,13 @@ After unplug/replug + clicking Connect:
 After a clean install, Windows sometimes fails to auto-load WinUSB on BD01 on the first 1–2
 Connect attempts (CM_PROB_FAILED_START or device disappears after mode switch). Root cause:
 `UpdateDriverForPlugAndPlayDevicesU` triggers a device reset that makes WinUSB load cleanly;
-normal PnP auto-load does not. Self-resolves after 2–3 attempts — no reinstall needed.
+normal PnP auto-load does not. Self-resolves after 2–3 attempts - no reinstall needed.
 
 ### Device instance IDs (this machine)
 - BD04: `USB\VID_081E&PID_BD04\5&938d0f6&0&13`
 - BD01: `USB\VID_081E&PID_BD01\5&938d0f6&0&13`
 
-These instance IDs are hardcoded in `InstallBoth` and `ConnectAsync` — will need updating for
+These instance IDs are hardcoded in `InstallBoth` and `ConnectAsync` - will need updating for
 distribution (use SetupDi enumeration instead).
 
 ---
@@ -290,7 +290,7 @@ distribution (use SetupDi enumeration instead).
 ### Build and run
 ```powershell
 dotnet build C:\repos\neosync\NeoSync.App\NeoSync.App.csproj -c Release
-# Run as administrator — required for driver install/remove
+# Run as administrator - required for driver install/remove
 C:\repos\neosync\NeoSync.App\bin\Release\net8.0-windows\NeoSync.App.exe
 ```
 Build is currently clean (0 errors, 0 warnings). The app requires .NET 8 Desktop Runtime.
@@ -306,37 +306,37 @@ by a `<None>` item in the csproj. The DLL is from libwdi 1.5.1 (x64 release buil
 4. Replug Neo.
 5. **Connect** → DriverSetupForm opens → **Install** → wait ~40s → dialog: "Unplug and replug".
 6. Unplug Neo, replug Neo.
-7. **Connect** → should connect. If it shows "BD01 did not appear — click Connect again":
+7. **Connect** → should connect. If it shows "BD01 did not appear - click Connect again":
    click Connect again (Windows sometimes needs 2–3 attempts after a fresh install).
 8. File list appears. Download a file to verify end-to-end.
 9. Repeat from step 2 for a second cycle to confirm clean behaviour.
 
 ### Diagnostic log
-`%TEMP%\neosync_diag.txt` — appended each run. Key entries:
-- `Switch=True` — mode switch command sent successfully to BD04 WinUSB
-- `TryOpen=True (after switch, 2400ms)` — BD01 WinUSB accessible, connection made
-- `BD01 did not appear...` — transient WinUSB load failure; retry Connect
-- `BD01 driver not responding...` — stale DeviceClasses registry path; replug needed
-- `TryOpen=False after 25000ms wait` — timeout (should not appear with new early-exit code)
+`%TEMP%\neosync_diag.txt` - appended each run. Key entries:
+- `Switch=True` - mode switch command sent successfully to BD04 WinUSB
+- `TryOpen=True (after switch, 2400ms)` - BD01 WinUSB accessible, connection made
+- `BD01 did not appear...` - transient WinUSB load failure; retry Connect
+- `BD01 driver not responding...` - stale DeviceClasses registry path; replug needed
+- `TryOpen=False after 25000ms wait` - timeout (should not appear with new early-exit code)
 
 Remove or gate this file behind a debug flag before release.
 
-### Hardcoded instance IDs — must fix before distribution
+### Hardcoded instance IDs - must fix before distribution
 `5&938d0f6&0&13` is the USB port-path of this specific machine's USB controller. Other
 machines will have a different suffix, so `IsDevicePresent`, `InstallBoth`, and `ConnectAsync`
 will fail to find BD01.
 
 **Where they appear:**
-- `NeoDriverInstaller.cs` — `const string Bd01InstanceId` in `InstallBoth`
-- `MainForm.cs` — `NativeMethods.IsDevicePresentOrPhantom(...)` in `ConnectAsync`
+- `NeoDriverInstaller.cs` - `const string Bd01InstanceId` in `InstallBoth`
+- `MainForm.cs` - `NativeMethods.IsDevicePresentOrPhantom(...)` in `ConnectAsync`
 
 **Fix:** replace both with a SetupDi enumeration that finds the first device instance matching
 `VID_081E&PID_BD01` regardless of port path. `NativeMethods.cs` already has all the required
 SetupDi P/Invoke; it's just a matter of writing `FindInstanceId(ushort vid, ushort pid)`.
 
-### `TryFixBd01DriverError` — dead code
+### `TryFixBd01DriverError` - dead code
 `NeoDriverInstaller.TryFixBd01DriverError(workDir)` is a public helper added during development
-but is no longer called anywhere — the decision was that force-reinstall during Connect is wrong
+but is no longer called anywhere - the decision was that force-reinstall during Connect is wrong
 and a replug is the right fix. It can be removed if desired.
 
 ### Post-install BD01 verification loop
@@ -348,9 +348,9 @@ even when it should. This has not caused visible user-facing failures because th
 replug" instruction in the success dialog provides a clean re-enumeration anyway.
 
 ### Next work items (priority order)
-1. **Fix hardcoded instance IDs** — required before the app works on any other machine.
-2. **Remove or flag the diagnostic log** — `neosync_diag.txt` leaks file operation timing; should be opt-in.
-3. **Code-sign the app and INF** — required for release; Secure Boot blocks unsigned INF installs.
-4. **File rename on device** — `SET_FILE_ATTRIBUTES` + `COMMIT` (protocol already understood).
-5. **Backup all files** — iterate applets, download all files to a folder.
-6. **Auto-launch on device connect** — `WM_DEVICECHANGE` / `RegisterDeviceNotification`.
+1. **Fix hardcoded instance IDs** - required before the app works on any other machine.
+2. **Remove or flag the diagnostic log** - `neosync_diag.txt` leaks file operation timing; should be opt-in.
+3. **Code-sign the app and INF** - required for release; Secure Boot blocks unsigned INF installs.
+4. **File rename on device** - `SET_FILE_ATTRIBUTES` + `COMMIT` (protocol already understood).
+5. **Backup all files** - iterate applets, download all files to a folder.
+6. **Auto-launch on device connect** - `WM_DEVICECHANGE` / `RegisterDeviceNotification`.
