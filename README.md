@@ -27,6 +27,11 @@ endorsed by Renaissance Learning or AlphaSmart.
   for this itself; day-to-day use afterward does not require running as
   admin).
 
+So far this has only been tested against a Neo2. It's expected to work on
+the original Neo too, since both devices share the same USB IDs and file
+transfer protocol, but that hasn't been confirmed on real Neo1 hardware yet.
+If you try it on a Neo1, let us know how it goes either way.
+
 ## Installing
 
 Download the latest installer from the Releases page and run it. It will:
