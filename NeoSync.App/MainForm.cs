@@ -409,7 +409,7 @@ internal sealed partial class MainForm : Form
             {
                 Invoke(() =>
                 {
-                    SetStatus("Put the Neo in transfer mode (use the device menu), then click Connect again.");
+                    SetStatus($"Could not switch the Neo to transfer mode - {switchDiag}");
                     btnConnect.Text    = "Connect";
                     btnConnect.Enabled = true;
                 });
