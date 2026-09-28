@@ -34,7 +34,14 @@ If you try it on a Neo1, let us know how it goes either way.
 
 ## Installing
 
-Download the latest installer from the Releases page and run it. It will:
+Download the latest installer from the Releases page and run it.
+
+The installer isn't code-signed yet, so Windows SmartScreen will likely show
+a "Windows protected your PC" warning when you run it. This is expected for
+a small unsigned tool, not a sign that anything is wrong. Click "More info",
+then "Run anyway" to proceed.
+
+Once running, the installer will:
 
 1. Ask you to accept a short disclaimer (this is unofficial, third-party
    software, use at your own risk).
