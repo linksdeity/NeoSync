@@ -43,7 +43,7 @@ internal sealed class DriverSetupForm : Form
         // ── Heading ───────────────────────────────────────────────────────
         var lblHeading = new Label
         {
-            Text      = "One-time driver setup required",
+            Text      = "WinUSB Driver Setup",
             Font      = new Font("Segoe UI", 11f, FontStyle.Bold),
             AutoSize  = true,
             Margin    = new Padding(0, 0, 0, 8)
@@ -113,9 +113,13 @@ internal sealed class DriverSetupForm : Form
     {
         var lines = new List<string>
         {
-            "NeoSync needs WinUSB installed for the AlphaSmart Neo to communicate over USB.\r\n" +
-            "This is a one-time setup.\r\n"
+            "Use this to reinstall broken or missing WinUSB drivers without a full NeoSync reinstall.\r\n"
         };
+
+        if (_state.HidReady && _state.CommsReady)
+        {
+            lines.Add("Your drivers currently look fine -- you only need this if you're having connection problems.\r\n");
+        }
 
         if (!_state.HidReady)
         {
