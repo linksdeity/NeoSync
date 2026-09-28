@@ -31,7 +31,7 @@ internal sealed partial class MainForm : Form
         var state = NeoDriverState.Detect();
         if (state.HidInfPath is null && state.CommsInfPath is null)
         {
-            MessageBox.Show(this, "No libwdi-installed WinUSB drivers were found for the Neo.",
+            MessageBox.Show(this, "No WinUSB drivers were found for the Neo.",
                 "NeoSync", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }

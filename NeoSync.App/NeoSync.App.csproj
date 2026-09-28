@@ -5,10 +5,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="native\libwdi.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>libwdi.dll</Link>
-    </Content>
     <Content Include="..\installer\driver\neosync_bd04.inf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>driver\neosync_bd04.inf</Link>
@@ -34,6 +30,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>neosync.ico</ApplicationIcon>
+    <Version>0.9.0</Version>
+    <Product>NeoSync</Product>
+    <Company>NeoSync</Company>
   </PropertyGroup>
 
 </Project>

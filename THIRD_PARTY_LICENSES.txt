@@ -46,25 +46,3 @@ neotools' flip_to_comms_mode() implementation as an authoritative reference for
 correcting an earlier implementation error. No neotools source was copied;
 NeoSync's implementation is an independent, from-scratch reverse-engineering
 targeting Windows WinUSB, consistent with the same protocol values.
-
---------------------------------------------------------------------------------
-libwdi
---------------------------------------------------------------------------------
-Copyright (c) 2010-2023 Pete Batard <pete@akeo.ie>
-Home page : https://github.com/pbatard/libwdi
-License   : GNU Lesser General Public License v3 (LGPLv3)
-            https://www.gnu.org/licenses/lgpl-3.0.html
-
-NeoSync uses libwdi.dll to install WinUSB drivers for the AlphaSmart Neo device.
-libwdi is dynamically linked and can be replaced by a user-built version.
-
-Modifications by linksdeity (https://github.com/linksdeity/libwdi):
-  - Disabled WDK/libusb0/libusbK/ARM/x86 embedding; builds a lean x64-only DLL
-    targeting the WinUSB inbox driver on Windows 10 and later.
-  - Defined WDK_DIR feature flag and removed co-installer (WdfCoInstaller /
-    WinUSBCoInstaller2) references from winusb.inf.in and winusb.cat.in; these
-    co-installers are not needed on Windows 10+ where WinUSB is an inbox driver.
-Modified source: https://github.com/linksdeity/libwdi
-
-A copy of the LGPLv3 license is available at:
-  https://www.gnu.org/licenses/lgpl-3.0.txt

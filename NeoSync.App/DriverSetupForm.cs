@@ -237,64 +237,15 @@ internal sealed class DriverSetupForm : Form
     private void OnAutoInstall(object? sender, EventArgs e)
     {
         string driverDir = Path.Combine(AppContext.BaseDirectory, "driver");
-        if (File.Exists(Path.Combine(driverDir, "neosync_bd01.inf")) &&
-            File.Exists(Path.Combine(driverDir, "neosync.cer")))
+        if (!File.Exists(Path.Combine(driverDir, "neosync_bd01.inf")) ||
+            !File.Exists(Path.Combine(driverDir, "neosync.cer")))
         {
-            InstallViaPnp(driverDir);
+            MessageBox.Show(this,
+                $"Driver files missing from:\r\n{driverDir}\r\n\r\nPlease reinstall NeoSync.",
+                "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return;
         }
 
-        string workDir = Path.Combine(Path.GetTempPath(), "NeoSyncDrivers");
-        string dllPath = Path.Combine(AppContext.BaseDirectory, "libwdi.dll");
-        // Remove Zone.Identifier ADS so Windows doesn't block the DLL as "downloaded from internet".
-        try { File.Delete(dllPath + ":Zone.Identifier"); } catch { }
-        try
-        {
-            Cursor  = Cursors.WaitCursor;
-            Enabled = false;
-
-            var (rc04, rc01) = NeoDriverInstaller.InstallBoth(workDir, Handle);
-
-            bool ok04 = rc04 == NeoDriverInstaller.WDI_SUCCESS;
-            bool ok01 = rc01 == NeoDriverInstaller.WDI_SUCCESS;
-
-            if (ok04 && ok01)
-            {
-                MessageBox.Show(this,
-                    "WinUSB drivers installed successfully!\r\n\r\n" +
-                    "Unplug your Neo, then plug it back in and click Connect.",
-                    "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                DialogResult = DialogResult.OK;
-                Close();
-            }
-            else
-            {
-                string msg = "Driver installation encountered errors:\r\n\r\n";
-                if (!ok04) msg += $"BD04 (keyboard mode): {NeoDriverInstaller.GetErrorString(rc04)}\r\n";
-                if (!ok01) msg += $"BD01 (transfer mode): {NeoDriverInstaller.GetErrorString(rc01)}\r\n";
-                if (rc04 == NeoDriverInstaller.WDI_ERROR_NEEDS_ADMIN || rc01 == NeoDriverInstaller.WDI_ERROR_NEEDS_ADMIN)
-                    msg += "\r\nPlease run NeoSync as Administrator for driver installation.";
-                MessageBox.Show(this, msg, "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
-        }
-        catch (Exception ex)
-        {
-            bool policyBlock = ex.Message.Contains("0x800711C7", StringComparison.Ordinal)
-                || ex.Message.Contains("Application Control", StringComparison.OrdinalIgnoreCase);
-            string detail = policyBlock
-                ? "Windows Application Control blocked libwdi.dll.\r\n\r\n" +
-                  "Option 1 - unblock the file (if flagged as \u201cfrom internet\u201d):\r\n" +
-                  $"  Right-click: {dllPath}\r\n  \u2192 Properties \u2192 Unblock\r\n\r\n" +
-                  "Option 2 - disable Smart App Control:\r\n" +
-                  "  Windows Security \u2192 App & browser control \u2192 Smart App Control \u2192 Off"
-                : $"Failed to load driver installer:\r\n{ex.Message}";
-            MessageBox.Show(this, detail, "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-        finally
-        {
-            Enabled = true;
-            Cursor  = Cursors.Default;
-            try { Directory.Delete(workDir, recursive: true); } catch { }
-        }
+        InstallViaPnp(driverDir);
     }
 }

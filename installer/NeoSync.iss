@@ -1,12 +1,11 @@
 [Setup]
 AppName=NeoSync
-; AppVersion is passed from build.ps1 via /DAppVersion=x.y - defaults to 1.0 for IDE use.
+; AppVersion is passed from build.ps1 via /DAppVersion=x.y.z - defaults to 0.9.0 for IDE use.
 #ifndef AppVersion
-  #define AppVersion "1.0"
+  #define AppVersion "0.9.0"
 #endif
 AppVersion={#AppVersion}
 AppPublisher=NeoSync
-AppPublisherURL=https://github.com/neosync
 DefaultDirName={autopf}\NeoSync
 DefaultGroupName=NeoSync
 OutputDir=Output
@@ -14,7 +13,7 @@ OutputBaseFilename=NeoSyncSetup
 Compression=lzma2
 SolidCompression=yes
 PrivilegesRequired=admin
-; 64-bit Windows only - libwdi.dll and the .NET publish are x64
+; 64-bit Windows only - the self-contained .NET publish is x64
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ; User must accept the disclaimer (unofficial software, use at your own risk,
@@ -23,7 +22,7 @@ LicenseFile=LICENSE.txt
 SetupIconFile=..\NeoSync.App\neosync.ico
 
 [Files]
-; All app files from dotnet publish output (includes libwdi.dll at root)
+; All app files from dotnet publish output
 Source: "publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 Source: "..\THIRD_PARTY_LICENSES.txt"; DestDir: "{app}"; Flags: ignoreversion
 ; Pre-signed WinUSB driver package (INF + signed CAT + public cert)

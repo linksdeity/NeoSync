@@ -1,7 +1,7 @@
 # Builds NeoSyncSetup.exe: publishes the .NET app then compiles the Inno Setup script.
 # Run from any directory; output is installer\Output\NeoSyncSetup.exe.
 param(
-    [string]$Version = "1.0"
+    [string]$Version = "0.9.0"
 )
 $ErrorActionPreference = 'Stop'
 
@@ -30,13 +30,15 @@ Write-Host "--- Publishing app (self-contained, win-x64) ---"
 if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
 dotnet publish "$repoRoot\NeoSync.App\NeoSync.App.csproj" `
     -c Release -r win-x64 --self-contained true `
-    -o $publishDir
+    -o $publishDir `
+    /p:Version=$Version
 if ($LASTEXITCODE -ne 0) { Write-Error "dotnet publish failed"; exit 1 }
 
 Write-Host "--- Publishing service (self-contained, win-x64) ---"
 dotnet publish "$repoRoot\NeoSync.Service\NeoSync.Service.csproj" `
     -c Release -r win-x64 --self-contained true `
-    -o $publishDir
+    -o $publishDir `
+    /p:Version=$Version
 if ($LASTEXITCODE -ne 0) { Write-Error "Service publish failed"; exit 1 }
 
 Write-Host "--- Compiling installer ---"

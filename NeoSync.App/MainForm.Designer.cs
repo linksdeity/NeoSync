@@ -69,7 +69,13 @@ partial class MainForm
         menuAdvanced.Items.Add(mnuDumpDiag);        menuAdvanced.Items.Add(new ToolStripSeparator());
         mnuQuickSyncFolder = new ToolStripMenuItem("Change Quick Sync folder…");
         mnuQuickSyncFolder.Click += (_, _) => ChangeQuickSyncFolder();
-        menuAdvanced.Items.Add(mnuQuickSyncFolder);        pnlButtons = new FlowLayoutPanel
+        menuAdvanced.Items.Add(mnuQuickSyncFolder);
+        menuAdvanced.Items.Add(new ToolStripSeparator());
+        menuAdvanced.Items.Add("Check for Updates…", null, async (_, _) => await UpdateChecker.CheckAsync(this));
+        menuAdvanced.Items.Add($"About NeoSync (v{UpdateChecker.CurrentVersion})", null,
+            (_, _) => MessageBox.Show(this, $"NeoSync v{UpdateChecker.CurrentVersion}",
+                "NeoSync - About", MessageBoxButtons.OK, MessageBoxIcon.Information));
+        pnlButtons = new FlowLayoutPanel
         {
             Dock          = DockStyle.Fill,
             Padding       = new Padding(6, 6, 6, 4),
