@@ -8,8 +8,7 @@ namespace NeoSync.App;
 /// <summary>Checks GitHub Releases for a newer NeoSync version.</summary>
 internal static class UpdateChecker
 {
-    // TODO: point this at the real "owner/repo" once NeoSync is pushed to a public GitHub repo.
-    private const string GitHubRepo = "neosync-project/neosync";
+    private const string GitHubRepo = "linksdeity/NeoSync";
 
     // AssemblyVersion is always 4-part (trailing .0 for Revision) -- drop it for a clean
     // semver-style display, and so comparisons against a 3-part GitHub tag aren't skewed

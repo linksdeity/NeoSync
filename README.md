@@ -1,6 +1,6 @@
 # NeoSync
 
-A Windows tool for the AlphaSmart Neo (and Neo2). It connects over USB, switches
+A Windows tool for the AlphaSmart Neo and Neo2. It connects over USB, switches
 the device into transfer mode, and lets you download or upload AlphaWord text
 files without needing the original AlphaSmart Manager software.
 
@@ -34,7 +34,7 @@ If you try it on a Neo1, let us know how it goes either way.
 
 ## Installing
 
-Download the latest installer from the Releases page and run it.
+Download the latest installer from the [Releases page](https://github.com/linksdeity/NeoSync/releases) and run it.
 
 The installer isn't code-signed yet, so Windows SmartScreen will likely show
 a "Windows protected your PC" warning when you run it. This is expected for

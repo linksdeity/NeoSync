@@ -6,6 +6,7 @@ AppName=NeoSync
 #endif
 AppVersion={#AppVersion}
 AppPublisher=NeoSync
+AppPublisherURL=https://github.com/linksdeity/NeoSync
 DefaultDirName={autopf}\NeoSync
 DefaultGroupName=NeoSync
 OutputDir=Output
