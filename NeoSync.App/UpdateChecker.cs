@@ -11,8 +11,17 @@ internal static class UpdateChecker
     // TODO: point this at the real "owner/repo" once NeoSync is pushed to a public GitHub repo.
     private const string GitHubRepo = "neosync-project/neosync";
 
-    public static Version CurrentVersion =>
-        Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
+    // AssemblyVersion is always 4-part (trailing .0 for Revision) -- drop it for a clean
+    // semver-style display, and so comparisons against a 3-part GitHub tag aren't skewed
+    // by Revision defaulting to -1 (undefined) on one side and 0 on the other.
+    public static Version CurrentVersion
+    {
+        get
+        {
+            Version v = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
+            return new Version(v.Major, v.Minor, v.Build);
+        }
+    }
 
     public static async Task CheckAsync(Form owner)
     {
@@ -45,12 +54,15 @@ internal static class UpdateChecker
             return;
         }
 
-        if (tag is null || !Version.TryParse(tag.TrimStart('v', 'V'), out Version? latest))
+        if (tag is null || !Version.TryParse(tag.TrimStart('v', 'V'), out Version? latestRaw))
         {
             MessageBox.Show(owner, "Couldn't determine the latest version.",
                 "NeoSync - Check for Updates", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
+        // Normalize to 3 parts too, matching CurrentVersion (Build defaults to -1 if the tag
+        // only has 2 parts, e.g. "v0.9" -- clamp so the comparison below is always valid).
+        var latest = new Version(latestRaw.Major, latestRaw.Minor, Math.Max(latestRaw.Build, 0));
 
         if (latest <= CurrentVersion)
         {
