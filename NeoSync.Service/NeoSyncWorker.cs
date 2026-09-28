@@ -292,9 +292,18 @@ internal sealed class NeoSyncWorker : BackgroundService
 
     private static string CmdRestartBd01(string instanceId)
     {
-        Bd04WinUsbCycle.RestartDevice(instanceId.Trim());
+        instanceId = instanceId.Trim();
+        // The pipe accepts commands from any local user (by design, so the unelevated app can
+        // reach this elevated service) -- without this check, a caller could pass ANY device's
+        // instance ID and have this SYSTEM-privileged service restart arbitrary hardware.
+        if (!IsNeoInstanceId(instanceId)) return "FAIL:instance ID is not a Neo device";
+        Bd04WinUsbCycle.RestartDevice(instanceId);
         return "OK";
     }
+
+    private static bool IsNeoInstanceId(string instanceId)
+        => instanceId.StartsWith(@"USB\VID_081E&PID_BD04", StringComparison.OrdinalIgnoreCase)
+        || instanceId.StartsWith(@"USB\VID_081E&PID_BD01", StringComparison.OrdinalIgnoreCase);
 
     private static string CmdForceBd01()
     {
@@ -306,11 +315,24 @@ internal sealed class NeoSyncWorker : BackgroundService
 
     private static string CmdSetupDrivers(string driverDir)
     {
+        driverDir = driverDir.Trim();
+
+        // The pipe accepts commands from any local user by design -- without this check, a
+        // caller could point this at an arbitrary folder and have this SYSTEM-privileged
+        // service trust-store-install (certutil -addstore Root) a certificate of their own
+        // choosing. Only ever accept the driver folder that ships alongside this service.
+        string expectedDir = Path.Combine(AppContext.BaseDirectory, "driver");
+        if (!string.Equals(Path.GetFullPath(driverDir).TrimEnd('\\'),
+                            Path.GetFullPath(expectedDir).TrimEnd('\\'),
+                            StringComparison.OrdinalIgnoreCase))
+        {
+            return "FAIL:driver directory not recognized";
+        }
+
         string logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "NeoSync");
         Directory.CreateDirectory(logDir);
         string log = Path.Combine(logDir, "neosync-debug.log");
 
-        driverDir = driverDir.Trim();
         string cer     = Path.Combine(driverDir, "neosync.cer");
         string bd01Inf = Path.Combine(driverDir, "neosync_bd01.inf");
         string bd04Inf = Path.Combine(driverDir, "neosync_bd04.inf");

@@ -699,6 +699,19 @@ internal sealed partial class MainForm : Form
                     {
                         string msg = "";
                         try { msg = rec.FormatDescription() ?? ""; } catch { }
+
+                        // These channels capture ALL system PnP activity, not just the Neo's --
+                        // only keep entries that actually mention our device/driver, so an
+                        // unrelated USB device (or anything else) plugged in during the same
+                        // window doesn't end up in a diagnostic dump.
+                        bool relevant = msg.Contains("081E", StringComparison.OrdinalIgnoreCase)
+                            || msg.Contains("BD01", StringComparison.OrdinalIgnoreCase)
+                            || msg.Contains("BD04", StringComparison.OrdinalIgnoreCase)
+                            || msg.Contains("AlphaSmart", StringComparison.OrdinalIgnoreCase)
+                            || msg.Contains("NeoSync", StringComparison.OrdinalIgnoreCase)
+                            || msg.Contains("WinUSB", StringComparison.OrdinalIgnoreCase);
+                        if (!relevant) continue;
+
                         if (msg.Length > 300) msg = msg[..300] + "…";
                         msg = msg.Replace('\r', ' ').Replace('\n', ' ');
                         results.Add($"  [{channel}] {rec.TimeCreated:HH:mm:ss.fff} {rec.ProviderName} Id={rec.Id}: {msg}");
