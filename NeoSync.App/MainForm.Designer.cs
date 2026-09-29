@@ -61,7 +61,9 @@ partial class MainForm
             Margin   = new Padding(0, 0, 6, 0)
         };
         menuAdvanced = new ContextMenuStrip(components);
-        mnuShowSystem = new ToolStripMenuItem("Show all applets") { CheckOnClick = true };
+        // Disabled for now: non-AlphaWord applets have no real functionality here yet
+        // (no preview, no Quick Sync support) -- re-enable once that's built out.
+        mnuShowSystem = new ToolStripMenuItem("Show all applets") { CheckOnClick = true, Enabled = false };
         mnuShowSystem.CheckedChanged += (_, _) => { if (_applets.Count > 0) PopulateTree(_applets); };
         menuAdvanced.Items.Add(mnuShowSystem);
         menuAdvanced.Items.Add(new ToolStripSeparator());
