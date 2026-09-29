@@ -727,7 +727,7 @@ internal sealed partial class MainForm : Form
         return results;
     }
 
-    private void ReportProblem()
+    private void CopyDiagnostics()
     {
         var state = NeoDriverState.Detect();
         string dump = NeoUsbDiag.BuildDumpString(state);
@@ -749,7 +749,7 @@ internal sealed partial class MainForm : Form
             "This never includes the contents of any file on the Neo -- only USB/driver state, " +
             "timing, and command names.\r\n\r\n" +
             $"Also saved to:\n{logPath}",
-            "NeoSync - Report a Problem", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            "NeoSync - Copy Diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     // ── UI helpers ────────────────────────────────────────────────────────────
