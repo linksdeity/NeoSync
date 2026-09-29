@@ -28,8 +28,8 @@ internal sealed partial class MainForm : Form
 
     private void RemoveDrivers()
     {
-        var state = NeoDriverState.Detect();
-        if (state.HidInfPath is null && state.CommsInfPath is null)
+        var before = NeoDriverState.Detect();
+        if (before.HidInfPath is null && before.CommsInfPath is null)
         {
             MessageBox.Show(this, "No WinUSB drivers were found for the Neo.",
                 "NeoSync", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -44,14 +44,25 @@ internal sealed partial class MainForm : Form
 
         Cursor = Cursors.WaitCursor;
         string removeResult = NeoSyncHelperClient.Send("REMOVE_DRIVERS");
-        var (ok04, out04, ok01, out01) = removeResult == "OK"
-            ? (state.HidInfPath is not null, "", state.CommsInfPath is not null, "")
-            : (false, removeResult, false, removeResult);
+        // Trust what actually changed, not just the service's response -- pnputil can report
+        // success while a still-connected device keeps its driver bound until a physical
+        // unplug/replug forces Windows to re-enumerate it.
+        var after = NeoDriverState.Detect();
         Cursor = Cursors.Default;
 
+        if (removeResult != "OK")
+        {
+            MessageBox.Show(this, $"Remove failed: {removeResult}", "NeoSync - Remove Drivers",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        bool ok04 = before.HidInfPath   is null || after.Hid   != NeoDriverKind.WinUsb;
+        bool ok01 = before.CommsInfPath is null || after.Comms != NeoDriverKind.WinUsb;
+
         string msg = "";
-        if (state.HidInfPath   != null) msg += $"BD04 ({state.HidInfPath}): {(ok04 ? "removed" : "failed")}\r\n{out04}\r\n\r\n";
-        if (state.CommsInfPath != null) msg += $"BD01 ({state.CommsInfPath}): {(ok01 ? "removed" : "failed")}\r\n{out01}";
+        if (before.HidInfPath   != null) msg += $"BD04: {(ok04 ? "removed" : "still installed -- unplug and replug the Neo, then try again")}\r\n";
+        if (before.CommsInfPath != null) msg += $"BD01: {(ok01 ? "removed" : "still installed -- unplug and replug the Neo, then try again")}";
         MessageBox.Show(this, msg.Trim(), "NeoSync - Remove Drivers",
             MessageBoxButtons.OK, ok04 && ok01 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
     }

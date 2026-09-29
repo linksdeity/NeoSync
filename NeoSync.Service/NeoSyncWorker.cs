@@ -374,8 +374,9 @@ internal sealed class NeoSyncWorker : BackgroundService
 
     private static string CmdRemoveDrivers()
     {
-        NeoDriverInstaller.RemoveBoth(null, null);
-        return "OK";
+        var (ok04, out04, ok01, out01) = NeoDriverInstaller.RemoveBoth(null, null);
+        if (ok04 || ok01) return "OK"; // caller re-verifies actual state; this just confirms the command ran
+        return $"FAIL:{out04} {out01}".Replace('\r', ' ').Replace('\n', ' ').Trim();
     }
 
     private static void RunProcess(string exe, string args)
