@@ -24,7 +24,11 @@ internal static class UpdateChecker
 
     public static async Task CheckAsync(Form owner)
     {
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        // AllowAutoRedirect=false: this specific GitHub API endpoint never legitimately
+        // redirects -- if it ever did, we'd rather fail loudly than silently follow a
+        // redirect off github.com.
+        using var handler = new HttpClientHandler { AllowAutoRedirect = false };
+        using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
         http.DefaultRequestHeaders.UserAgent.ParseAdd("NeoSync-UpdateCheck");
 
         string json;
@@ -76,6 +80,18 @@ internal static class UpdateChecker
 
         if (result == DialogResult.Yes && htmlUrl is not null)
         {
+            // Belt-and-suspenders: GitHub's own API always returns an https://github.com/...
+            // URL for this field, but never open anything else, in case that ever changes
+            // (a compromised account, a future code change pulling the wrong JSON field, etc.).
+            bool isRealGitHubUrl = Uri.TryCreate(htmlUrl, UriKind.Absolute, out Uri? uri)
+                && uri.Scheme == Uri.UriSchemeHttps
+                && (uri.Host == "github.com" || uri.Host.EndsWith(".github.com", StringComparison.Ordinal));
+            if (!isRealGitHubUrl)
+            {
+                MessageBox.Show(owner, "The release URL didn't look right, so nothing was opened.",
+                    "NeoSync - Check for Updates", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             try { Process.Start(new ProcessStartInfo(htmlUrl) { UseShellExecute = true }); }
             catch { }
         }
