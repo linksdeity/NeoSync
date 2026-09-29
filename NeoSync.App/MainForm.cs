@@ -44,10 +44,19 @@ internal sealed partial class MainForm : Form
 
         Cursor = Cursors.WaitCursor;
         string removeResult = NeoSyncHelperClient.Send("REMOVE_DRIVERS");
-        // Trust what actually changed, not just the service's response -- pnputil can report
-        // success while a still-connected device keeps its driver bound until a physical
-        // unplug/replug forces Windows to re-enumerate it.
-        var after = NeoDriverState.Detect();
+
+        // The service also restarts each device node to force Windows to drop a stale
+        // binding, but that takes a moment to settle -- poll briefly rather than checking
+        // just once immediately, to avoid reporting "still installed" from a race.
+        NeoDriverState after = NeoDriverState.Detect();
+        for (int i = 0; i < 20; i++) // up to ~6s
+        {
+            bool hidDone  = before.HidInfPath   is null || after.Hid   != NeoDriverKind.WinUsb;
+            bool commsDone = before.CommsInfPath is null || after.Comms != NeoDriverKind.WinUsb;
+            if (hidDone && commsDone) break;
+            Thread.Sleep(300);
+            after = NeoDriverState.Detect();
+        }
         Cursor = Cursors.Default;
 
         if (removeResult != "OK")

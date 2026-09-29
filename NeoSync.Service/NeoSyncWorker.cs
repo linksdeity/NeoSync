@@ -375,6 +375,16 @@ internal sealed class NeoSyncWorker : BackgroundService
     private static string CmdRemoveDrivers()
     {
         var (ok04, out04, ok01, out01) = NeoDriverInstaller.RemoveBoth(null, null);
+
+        // Deleting the driver package from the store doesn't necessarily clear a live,
+        // still-connected device's own binding to it -- a physical unplug/replug alone
+        // has been observed not to be enough. Force it with a device restart at the CM
+        // level, same mechanism used elsewhere to clear a stuck driver state.
+        string? bd04Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD04");
+        if (bd04Id is not null) Bd04WinUsbCycle.RestartDevice(bd04Id);
+        string? bd01Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD01");
+        if (bd01Id is not null) Bd04WinUsbCycle.RestartDevice(bd01Id);
+
         if (ok04 || ok01) return "OK"; // caller re-verifies actual state; this just confirms the command ran
         return $"FAIL:{out04} {out01}".Replace('\r', ' ').Replace('\n', ' ').Trim();
     }
