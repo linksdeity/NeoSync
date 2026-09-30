@@ -807,6 +807,7 @@ internal sealed partial class MainForm : Form
                 string? preview = isAlphaWord && hasContent ? GetFilePreview(applet, i) : null;
                 var previewNode = new TreeNode(preview ?? string.Empty)
                 {
+                    Tag       = (applet, i), // clicking the preview line selects its file too
                     ForeColor = SystemColors.GrayText,
                     NodeFont  = new Font(treeFiles.Font, FontStyle.Italic)
                 };
