@@ -40,8 +40,8 @@ partial class MainForm
         SuspendLayout();
 
         Text          = "NeoSync";
-        MinimumSize   = new Size(700, 560);
-        Size          = new Size(760, 680);
+        MinimumSize   = new Size(700, 620);
+        Size          = new Size(760, 860);
         StartPosition = FormStartPosition.CenterScreen;
         try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
         Font          = new Font("Segoe UI", 9f);
