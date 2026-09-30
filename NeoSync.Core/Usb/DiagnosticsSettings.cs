@@ -33,6 +33,46 @@ public static class DiagnosticsSettings
     public static void AppendLog(string path, string text)
     {
         if (!IsEnabled) return;
-        try { File.AppendAllText(path, text); } catch { }
+        AppendLogAlways(path, text);
+    }
+
+    /// <summary>
+    /// Appends regardless of the enable/disable toggle -- for explicit one-off actions
+    /// like Copy Diagnostics, where clicking the button is itself the consent. Still capped.
+    /// </summary>
+    public static void AppendLogAlways(string path, string text)
+    {
+        try
+        {
+            TrimIfTooBig(path);
+            File.AppendAllText(path, text);
+        }
+        catch { }
+    }
+
+    // These are diagnostic logs meant to be read by a person, not an audit trail -- cap
+    // size rather than letting them grow unbounded over months/years of use.
+    private const long MaxLogBytes = 2 * 1024 * 1024; // 2 MB
+
+    private static void TrimIfTooBig(string path)
+    {
+        try
+        {
+            var info = new FileInfo(path);
+            if (!info.Exists || info.Length <= MaxLogBytes) return;
+
+            // Keep roughly the newest half rather than wiping it entirely, so there's
+            // still some recent history to look at right after a trim.
+            string content = File.ReadAllText(path);
+            int keepFrom = content.Length - (int)(MaxLogBytes / 2);
+            if (keepFrom > 0)
+            {
+                int nl = content.IndexOf('\n', keepFrom); // avoid starting mid-line
+                content = content[(nl >= 0 ? nl + 1 : keepFrom)..];
+            }
+            File.WriteAllText(path,
+                $"=== log trimmed {DateTime.Now:yyyy-MM-dd HH:mm:ss} (exceeded {MaxLogBytes / 1024 / 1024} MB) ===\r\n" + content);
+        }
+        catch { }
     }
 }

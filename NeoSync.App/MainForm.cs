@@ -755,7 +755,7 @@ internal sealed partial class MainForm : Form
         // This is an explicit, one-off user action (distinct from the always-on/off
         // background logging toggle) -- clicking the button is itself the consent.
         string logPath = Path.Combine(Path.GetTempPath(), "neosync_diag.txt");
-        try { File.AppendAllText(logPath, dump); } catch { }
+        DiagnosticsSettings.AppendLogAlways(logPath, dump);
         try { Clipboard.SetText(dump); } catch { }
         MessageBox.Show(this,
             "Diagnostic info copied to clipboard -- paste it into your bug report or support email.\r\n\r\n" +
