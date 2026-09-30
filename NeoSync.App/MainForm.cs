@@ -87,7 +87,7 @@ internal sealed partial class MainForm : Form
             btnDownload.Enabled  = false;
             btnUpload.Enabled    = false;
             btnDelete.Enabled    = false;
-            btnQuickSync.Enabled = false;
+            btnQuickSync.PrimaryEnabled = false;
             btnConnect.Text      = "Connect";
             HideUsageBar();
             SetStatus("Disconnecting\u2026");
@@ -108,7 +108,7 @@ internal sealed partial class MainForm : Form
         btnDownload.Enabled  = false;
         btnUpload.Enabled    = false;
         btnDelete.Enabled    = false;
-        btnQuickSync.Enabled = false;
+        btnQuickSync.PrimaryEnabled = false;
         treeFiles.Nodes.Clear();
         _applets.Clear();
         _device?.Dispose();
@@ -221,13 +221,13 @@ internal sealed partial class MainForm : Form
         if (_device is null) return;
 
         SetStatus("Quick Sync starting…");
-        btnQuickSync.Enabled = false;
+        btnQuickSync.PrimaryEnabled = false;
 
         Task.Run(QuickSync).ContinueWith(t =>
         {
             Invoke(() =>
             {
-                btnQuickSync.Enabled = _device is not null;
+                btnQuickSync.PrimaryEnabled = _device is not null;
                 if (t.Exception != null)
                     SetStatus($"Quick Sync failed: {t.Exception.InnerException?.Message ?? t.Exception.Message}");
             });
@@ -910,7 +910,7 @@ internal sealed partial class MainForm : Form
         SetStatus(hasFiles ? "Ready." : "Connected - no files found.");
         btnConnect.Text      = "Disconnect";
         btnConnect.Enabled   = true;
-        btnQuickSync.Enabled = true;
+        btnQuickSync.PrimaryEnabled = true;
         if (availRam.HasValue)
             UpdateUsageBar(alphaWordUsedBytes, availRam.Value);
     }
