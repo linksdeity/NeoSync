@@ -120,7 +120,7 @@ internal sealed class DriverSetupForm : Form
 
         pnlStatus.SuspendLayout();
         pnlStatus.Controls.Clear();
-        pnlStatus.Controls.Add(MakeStatusLabel("BD04 (keyboard mode driver)", _state.Hid));
+        pnlStatus.Controls.Add(MakeStatusLabel("BD04 (mode-switch driver)", _state.Hid));
         pnlStatus.Controls.Add(MakeStatusLabel("BD01 (transfer mode driver)", _state.Comms));
         pnlStatus.ResumeLayout();
     }
