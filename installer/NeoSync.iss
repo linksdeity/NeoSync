@@ -151,6 +151,31 @@ begin
     '-delstore Root NeoSync', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
 
+// Deleting the driver package from the store doesn't necessarily clear a live,
+// still-connected device's own binding to it -- observed directly during testing,
+// same issue the in-app Remove WinUSB Drivers button had before it was fixed to
+// restart each device afterward. The service is already stopped/deleted by this
+// point in uninstall, so this calls pnputil directly (the uninstaller itself
+// already runs elevated).
+procedure RestartNeoDevices;
+var
+  DevIds, InstIds: TArrayOfString;
+  i, j: Integer;
+  ResultCode: Integer;
+begin
+  SetArrayLength(DevIds, 2);
+  DevIds[0] := 'VID_081E&PID_BD04';
+  DevIds[1] := 'VID_081E&PID_BD01';
+  for i := 0 to GetArrayLength(DevIds) - 1 do
+  begin
+    if RegGetSubkeyNames(HKLM, 'SYSTEM\CurrentControlSet\Enum\USB\' + DevIds[i], InstIds) then
+      for j := 0 to GetArrayLength(InstIds) - 1 do
+        Exec(ExpandConstant('{sys}') + '\pnputil.exe',
+          '/restart-device "USB\' + DevIds[i] + '\' + InstIds[j] + '"',
+          '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  end;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   ResultCode: Integer;
@@ -163,5 +188,6 @@ begin
       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     RemoveNeoSyncDriverInfs;
     RemoveNeoSyncCert;
+    RestartNeoDevices;
   end;
 end;
