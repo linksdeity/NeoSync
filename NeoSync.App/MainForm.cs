@@ -69,6 +69,18 @@ internal sealed partial class MainForm : Form
         string msg = "";
         if (before.HidInfPath   != null) msg += $"BD04: {(ok04 ? "removed" : "failed -- try again, or unplug and replug the Neo first")}\r\n";
         if (before.CommsInfPath != null) msg += $"BD01: {(ok01 ? "removed" : "failed -- try again, or unplug and replug the Neo first")}";
+
+        // BD04 keeps using its old WinUSB binding until Windows re-enumerates the device --
+        // only relevant if the Neo is actually plugged in right now; if it's not, the next
+        // time it's connected Windows will bind the default keyboard driver on its own.
+        if (before.HidInfPath != null && ok04)
+        {
+            string? bd04Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD04");
+            bool bd04Connected = bd04Id != null && NeoUsbDiag.GetDevicePresence(bd04Id).Present;
+            if (bd04Connected)
+                msg += "\r\n\r\nUnplug and reconnect the Neo so Windows' default keyboard driver can take over.";
+        }
+
         MessageBox.Show(this, msg.Trim(), "NeoSync - Remove Drivers",
             MessageBoxButtons.OK, ok04 && ok01 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
     }
