@@ -379,14 +379,25 @@ internal sealed class NeoSyncWorker : BackgroundService
         // Deleting the driver package from the store doesn't necessarily clear a live,
         // still-connected device's own binding to it -- a physical unplug/replug alone
         // has been observed not to be enough. Force it with a device restart at the CM
-        // level, same mechanism used elsewhere to clear a stuck driver state.
+        // level, same mechanism used elsewhere to clear a stuck driver state. Only
+        // meaningful if the device is actually present right now -- BD01 in particular
+        // usually isn't (it only exists after a mode switch, not just from being plugged
+        // in), so there's nothing live to restart most of the time, which is fine.
         string? bd04Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD04");
         if (bd04Id is not null) Bd04WinUsbCycle.RestartDevice(bd04Id);
         string? bd01Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD01");
         if (bd01Id is not null) Bd04WinUsbCycle.RestartDevice(bd01Id);
 
-        if (ok04 || ok01) return "OK"; // caller re-verifies actual state; this just confirms the command ran
-        return $"FAIL:{out04} {out01}".Replace('\r', ' ').Replace('\n', ' ').Trim();
+        // Report pnputil's own real per-device result -- this is reliable regardless of
+        // whether the device is currently connected, unlike re-checking the registry
+        // afterward (a not-currently-present device's driver-state registry entry can be
+        // stale/unchanged even though the on-disk package really was deleted).
+        // RemoveAllMatchingInfs reports ok=false both when removal genuinely failed AND
+        // when there was simply nothing staged to begin with -- the latter means the goal
+        // (no driver package in the store) is already met, so count it as success too.
+        bool trueOk04 = ok04 || out04.Contains("No staged INFs found", StringComparison.OrdinalIgnoreCase);
+        bool trueOk01 = ok01 || out01.Contains("No staged INFs found", StringComparison.OrdinalIgnoreCase);
+        return $"OK:{(trueOk04 ? 1 : 0)}:{(trueOk01 ? 1 : 0)}";
     }
 
     private static void RunProcess(string exe, string args)

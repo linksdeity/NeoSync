@@ -115,6 +115,17 @@ public sealed class NeoDriverState
             else
             {
                 var kind = ClassifyDriver(service, provider, inf);
+                // Registry Service/InfPath values can lag behind reality -- a device can
+                // still show "winusb" here even after the backing oemN.inf package was
+                // deleted from the driver store (removal doesn't always force a live
+                // rebind, and a non-present device's entry may just never get refreshed
+                // at all). Don't trust a WinUsb classification whose INF no longer exists.
+                if (kind == NeoDriverKind.WinUsb && inf is not null
+                    && !File.Exists(Path.Combine(WindowsInfDir, inf)))
+                {
+                    DbgLog.W($"  InfPath {inf} no longer exists on disk -> stale, downgrading from WinUsb");
+                    kind = NeoDriverKind.Other;
+                }
                 DbgLog.W($"  ClassifyDriver → {kind}");
                 result = (kind, inf);
             }

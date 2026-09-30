@@ -44,34 +44,27 @@ internal sealed partial class MainForm : Form
 
         Cursor = Cursors.WaitCursor;
         string removeResult = NeoSyncHelperClient.Send("REMOVE_DRIVERS");
-
-        // The service also restarts each device node to force Windows to drop a stale
-        // binding, but that takes a moment to settle -- poll briefly rather than checking
-        // just once immediately, to avoid reporting "still installed" from a race.
-        NeoDriverState after = NeoDriverState.Detect();
-        for (int i = 0; i < 20; i++) // up to ~6s
-        {
-            bool hidDone  = before.HidInfPath   is null || after.Hid   != NeoDriverKind.WinUsb;
-            bool commsDone = before.CommsInfPath is null || after.Comms != NeoDriverKind.WinUsb;
-            if (hidDone && commsDone) break;
-            Thread.Sleep(300);
-            after = NeoDriverState.Detect();
-        }
         Cursor = Cursors.Default;
 
-        if (removeResult != "OK")
+        // Response is "OK:<bd04 0/1>:<bd01 0/1>" -- pnputil's own real per-device result,
+        // which is reliable regardless of whether the device is currently connected. A
+        // live registry re-check was tried here before and reverted: BD01 in particular
+        // usually isn't physically present at this point (it only exists after a mode
+        // switch, not just from being plugged in), so its driver-state registry entry can
+        // be stale, wrongly suggesting removal failed when it actually succeeded.
+        string[] parts = removeResult.Split(':');
+        if (parts.Length != 3 || parts[0] != "OK")
         {
             MessageBox.Show(this, $"Remove failed: {removeResult}", "NeoSync - Remove Drivers",
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
-
-        bool ok04 = before.HidInfPath   is null || after.Hid   != NeoDriverKind.WinUsb;
-        bool ok01 = before.CommsInfPath is null || after.Comms != NeoDriverKind.WinUsb;
+        bool ok04 = before.HidInfPath   is null || parts[1] == "1";
+        bool ok01 = before.CommsInfPath is null || parts[2] == "1";
 
         string msg = "";
-        if (before.HidInfPath   != null) msg += $"BD04: {(ok04 ? "removed" : "still installed -- unplug and replug the Neo, then try again")}\r\n";
-        if (before.CommsInfPath != null) msg += $"BD01: {(ok01 ? "removed" : "still installed -- unplug and replug the Neo, then try again")}";
+        if (before.HidInfPath   != null) msg += $"BD04: {(ok04 ? "removed" : "failed -- try again, or unplug and replug the Neo first")}\r\n";
+        if (before.CommsInfPath != null) msg += $"BD01: {(ok01 ? "removed" : "failed -- try again, or unplug and replug the Neo first")}";
         MessageBox.Show(this, msg.Trim(), "NeoSync - Remove Drivers",
             MessageBoxButtons.OK, ok04 && ok01 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
     }
