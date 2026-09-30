@@ -9,7 +9,9 @@ namespace NeoSync.App;
 /// </summary>
 internal sealed class DriverSetupForm : Form
 {
-    private readonly NeoDriverState _state;
+    private NeoDriverState _state;
+    private Label lblExplanation = null!;
+    private FlowLayoutPanel pnlStatus = null!;
 
     public DriverSetupForm(NeoDriverState state)
     {
@@ -53,7 +55,7 @@ internal sealed class DriverSetupForm : Form
         // AutoSize Label with a bounded width (not a Dock=Fill RichTextBox in a
         // Percent row) so the AutoSize form can compute a real preferred size -
         // this is what was causing text/buttons to render clipped previously.
-        var lblExplanation = new Label
+        lblExplanation = new Label
         {
             AutoSize      = true,
             MaximumSize   = new Size(560, 0),
@@ -62,16 +64,15 @@ internal sealed class DriverSetupForm : Form
             Margin        = new Padding(0, 0, 0, 8)
         };
 
-        // ── Status panel ──────────────────────────────────────────────────
-        var pnlStatus = new FlowLayoutPanel
+        // ── Status panel ─────────────────────────────────────────────────
+        pnlStatus = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.TopDown,
             WrapContents  = false,
             AutoSize      = true,
             Margin        = new Padding(0, 8, 0, 8)
         };
-        pnlStatus.Controls.Add(MakeStatusLabel("BD04 (keyboard mode driver)", _state.Hid));
-        pnlStatus.Controls.Add(MakeStatusLabel("BD01 (transfer mode driver)", _state.Comms));
+        RefreshStatusLabels();
 
         // ── Buttons ───────────────────────────────────────────────────────
         var pnlButtons = new FlowLayoutPanel
@@ -107,6 +108,21 @@ internal sealed class DriverSetupForm : Form
         Controls.Add(layout);
         AcceptButton = btnClose;
         CancelButton = btnClose;
+    }
+
+    /// <summary>Re-detects driver state and refreshes the heading text and status labels
+    /// in place -- called after Install so the green/red shown actually reflects what
+    /// just happened, instead of only ever showing state from when the dialog opened.</summary>
+    private void RefreshStatusLabels()
+    {
+        _state = NeoDriverState.Detect();
+        lblExplanation.Text = BuildExplanationText();
+
+        pnlStatus.SuspendLayout();
+        pnlStatus.Controls.Clear();
+        pnlStatus.Controls.Add(MakeStatusLabel("BD04 (keyboard mode driver)", _state.Hid));
+        pnlStatus.Controls.Add(MakeStatusLabel("BD01 (transfer mode driver)", _state.Comms));
+        pnlStatus.ResumeLayout();
     }
 
     private string BuildExplanationText()
@@ -194,6 +210,7 @@ internal sealed class DriverSetupForm : Form
             string setupResult = NeoSyncHelperClient.Send($"SETUP_DRIVERS {driverDir}");
             Enabled = true;
             Cursor  = Cursors.Default;
+            RefreshStatusLabels();
 
             if (!setupResult.StartsWith("OK"))
             {
@@ -234,9 +251,10 @@ internal sealed class DriverSetupForm : Form
                     ? "Driver setup complete. Click Connect in the main window to start."
                     : "The switch succeeded but BD01 took too long to enumerate.\n\nClick Connect in the main window.";
             }
+            // Refresh in place rather than closing -- shows what the driver state actually
+            // ended up as, instead of just trusting the completion message.
+            RefreshStatusLabels();
             MessageBox.Show(this, msg, "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            DialogResult = DialogResult.OK;
-            Close();
         }
         finally
         {
