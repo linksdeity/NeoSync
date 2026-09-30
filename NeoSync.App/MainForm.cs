@@ -12,6 +12,9 @@ internal sealed partial class MainForm : Form
 {
     private NeoDevice? _device;
     private List<NeoApplet> _applets = [];
+    private uint _usageUsedBytes;
+    private uint _usageFreeBytes;
+    private bool _usageHasData;
 
     public MainForm()
     {
@@ -86,7 +89,7 @@ internal sealed partial class MainForm : Form
             btnDelete.Enabled    = false;
             btnQuickSync.Enabled = false;
             btnConnect.Text      = "Connect";
-            lblDeviceInfo.Text   = "";
+            HideUsageBar();
             SetStatus("Disconnecting\u2026");
 
             // BD04 sometimes lands in a transient failed-start state when the Neo
@@ -110,7 +113,7 @@ internal sealed partial class MainForm : Form
         _applets.Clear();
         _device?.Dispose();
         _device = null;
-        lblDeviceInfo.Text = "";
+        HideUsageBar();
 
         Task.Run(ConnectAsync).ContinueWith(t =>
         {
@@ -673,6 +676,11 @@ internal sealed partial class MainForm : Form
         {
             bool ok = _device?.WriteFile(applet, fileIndex, data) ?? false;
             Invoke(() => SetStatus(ok ? "Upload complete." : "Upload failed."));
+            if (ok)
+            {
+                uint availRamAfter = _device?.GetAvailableRam() ?? 0;
+                Invoke(() => PopulateTree(_applets, availRamAfter));
+            }
         }
         finally
         {
@@ -844,6 +852,7 @@ internal sealed partial class MainForm : Form
     {
         treeFiles.BeginUpdate();
         treeFiles.Nodes.Clear();
+        uint alphaWordUsedBytes = 0;
 
         foreach (var applet in applets)
         {
@@ -864,6 +873,9 @@ internal sealed partial class MainForm : Form
                 NeoFileAttributes? attr = _device?.GetFileAttributes(applet, i);
                 string label = attr?.FileName is { Length: > 0 } name ? name : $"File {i}";
                 bool hasContent = attr is not null && attr.AllocSize > attr.MinSize;
+                // AlphaWord is always enumerated regardless of the show-all-applets toggle,
+                // so this total is a stable measure of the device's user-content usage.
+                if (isAlphaWord && attr is not null) alphaWordUsedBytes += attr.AllocSize;
                 if (attr is not null)
                 {
                     // MinSize is a constant minimum block allocation (always 512 in practice),
@@ -900,7 +912,7 @@ internal sealed partial class MainForm : Form
         btnConnect.Enabled   = true;
         btnQuickSync.Enabled = true;
         if (availRam.HasValue)
-            lblDeviceInfo.Text = $"Free: {FormatFileSize(availRam.Value)}";
+            UpdateUsageBar(alphaWordUsedBytes, availRam.Value);
     }
 
     private static string FormatFileSize(uint bytes)
@@ -934,5 +946,46 @@ internal sealed partial class MainForm : Form
     {
         lblStatus.Text = text;
         lblStatus.ToolTipText = text; // full message on hover in case it's too long to fit
+    }
+
+    private void UpdateUsageBar(uint usedBytes, uint freeBytes)
+    {
+        _usageUsedBytes = usedBytes;
+        _usageFreeBytes = freeBytes;
+        _usageHasData   = true;
+        pnlUsageBar.Visible = true;
+        pnlUsageBar.Invalidate();
+    }
+
+    private void HideUsageBar()
+    {
+        _usageHasData = false;
+        pnlUsageBar.Visible = false;
+    }
+
+    private void pnlUsageBar_Paint(object? sender, PaintEventArgs e)
+    {
+        Graphics g = e.Graphics;
+        Rectangle rect = pnlUsageBar.ClientRectangle;
+
+        using (var bg = new SolidBrush(SystemColors.ControlLight))
+            g.FillRectangle(bg, rect);
+
+        if (_usageHasData)
+        {
+            uint total = _usageUsedBytes + _usageFreeBytes;
+            double fraction = total > 0 ? (double)_usageUsedBytes / total : 0;
+            int fillWidth = (int)(rect.Width * fraction);
+            using (var fill = new SolidBrush(Color.SteelBlue))
+                g.FillRectangle(fill, new Rectangle(0, 0, fillWidth, rect.Height));
+
+            int percentUsed = total > 0 ? (int)Math.Round(_usageUsedBytes * 100.0 / total) : 0;
+            string text = $"{percentUsed}% used \u2014 {FormatFileSize(_usageFreeBytes)} free of {FormatFileSize(total)}";
+            using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            g.DrawString(text, pnlUsageBar.Font, SystemBrushes.ControlText, rect, sf);
+        }
+
+        using var border = new Pen(SystemColors.ControlDark);
+        g.DrawRectangle(border, 0, 0, rect.Width - 1, rect.Height - 1);
     }
 }

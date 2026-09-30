@@ -17,10 +17,12 @@ partial class MainForm
     private Button               btnUpload     = null!;
     private Button               btnDelete     = null!;
     private Button               btnQuickSync  = null!;
+    private Button               btnOpenQuickSyncFolder = null!;
+    private TableLayoutPanel     pnlQuickSync  = null!;
     private ToolStripMenuItem     mnuQuickSyncFolder = null!;
     private StatusStrip          statusStrip   = null!;
     private ToolStripStatusLabel lblStatus     = null!;
-    private ToolStripStatusLabel lblDeviceInfo = null!;
+    private Panel                pnlUsageBar   = null!;
     private FlowLayoutPanel      pnlButtons    = null!;
     private TableLayoutPanel     tableLayout   = null!;
 
@@ -48,16 +50,32 @@ partial class MainForm
 
         statusStrip = new StatusStrip { Dock = DockStyle.Bottom };
         lblStatus   = new ToolStripStatusLabel("Not connected.") { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
-        lblDeviceInfo = new ToolStripStatusLabel("") { TextAlign = ContentAlignment.MiddleRight };
         statusStrip.Items.Add(lblStatus);
-        statusStrip.Items.Add(lblDeviceInfo);
+
+        pnlUsageBar = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0), Visible = false };
+        pnlUsageBar.Paint += pnlUsageBar_Paint;
 
         var btnPad = new Padding(0, 0, 6, 0);
         btnConnect  = new Button { Text = "Connect",  AutoSize = true, Margin = new Padding(0, 0, 16, 0) };
         btnDownload = new Button { Text = "Download", AutoSize = true, Margin = btnPad, Enabled = false };
         btnUpload   = new Button { Text = "Upload",   AutoSize = true, Margin = btnPad, Enabled = false };
         btnDelete   = new Button { Text = "Delete",   AutoSize = true, Margin = btnPad, Enabled = false };
-        btnQuickSync = new Button { Text = "Quick Sync", AutoSize = true, Margin = new Padding(16, 0, 6, 0), Enabled = false };
+
+        pnlQuickSync = new TableLayoutPanel
+        {
+            ColumnCount  = 1,
+            RowCount     = 2,
+            AutoSize     = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Margin       = new Padding(16, 0, 6, 0)
+        };
+        pnlQuickSync.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        pnlQuickSync.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        pnlQuickSync.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        btnQuickSync = new Button { Text = "Quick Sync", AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 2), Enabled = false };
+        btnOpenQuickSyncFolder = new Button { Text = "Open Folder", AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
+        pnlQuickSync.Controls.Add(btnQuickSync, 0, 0);
+        pnlQuickSync.Controls.Add(btnOpenQuickSyncFolder, 0, 1);
 
         btnAdvanced = new Button
         {
@@ -82,7 +100,6 @@ partial class MainForm
         mnuDiagLogging.Click += (_, _) => NeoSyncHelperClient.Send($"SET_DIAGNOSTICS {(mnuDiagLogging.Checked ? 1 : 0)}");
         menuAdvanced.Items.Add(mnuDiagLogging);
         menuAdvanced.Items.Add(new ToolStripSeparator());
-        menuAdvanced.Items.Add("Open Quick Sync Folder", null, (_, _) => OpenQuickSyncFolder());
         mnuQuickSyncFolder = new ToolStripMenuItem("Change Quick Sync folder…");
         mnuQuickSyncFolder.Click += (_, _) => ChangeQuickSyncFolder();
         menuAdvanced.Items.Add(mnuQuickSyncFolder);
@@ -100,7 +117,7 @@ partial class MainForm
             AutoSize      = false
         };
         pnlButtons.Controls.AddRange(
-            new Control[] { btnConnect, btnDownload, btnUpload, btnDelete, btnQuickSync, btnAdvanced });
+            new Control[] { btnConnect, btnDownload, btnUpload, btnDelete, pnlQuickSync, btnAdvanced });
 
         treeFiles = new TreeView
         {
@@ -115,20 +132,23 @@ partial class MainForm
         {
             Dock        = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount    = 2,
+            RowCount    = 3,
             Padding     = new Padding(0)
         };
         tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         tableLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        tableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
         tableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        tableLayout.Controls.Add(pnlButtons, 0, 0);
-        tableLayout.Controls.Add(treeFiles,  0, 1);
+        tableLayout.Controls.Add(pnlButtons,  0, 0);
+        tableLayout.Controls.Add(pnlUsageBar, 0, 1);
+        tableLayout.Controls.Add(treeFiles,   0, 2);
 
         btnConnect.Click    += btnConnect_Click;
         btnDownload.Click   += btnDownload_Click;
         btnUpload.Click     += btnUpload_Click;
         btnDelete.Click     += btnDelete_Click;
         btnQuickSync.Click  += btnQuickSync_Click;
+        btnOpenQuickSyncFolder.Click += (_, _) => OpenQuickSyncFolder();
         btnAdvanced.Click   += (_, _) => menuAdvanced.Show(btnAdvanced, 0, btnAdvanced.Height);
         treeFiles.AfterSelect += treeFiles_AfterSelect;
 
