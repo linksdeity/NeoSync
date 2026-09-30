@@ -183,6 +183,13 @@ internal sealed class DriverSetupForm : Form
         {
             Cursor  = Cursors.WaitCursor;
             Enabled = false;
+
+            // Clear any existing staged package first, same as a machine that's never had
+            // NeoSync installed -- this is the exact same clean-slate state a fresh install
+            // starts from, so "Reinstall" gets the same reliability rather than potentially
+            // layering a fresh install on top of a stale/partial one.
+            NeoSyncHelperClient.Send("REMOVE_DRIVERS");
+
             // Trust the cert and stage the BD01 INF via the NeoSyncHelper service (LocalSystem).
             string setupResult = NeoSyncHelperClient.Send($"SETUP_DRIVERS {driverDir}");
             Enabled = true;
