@@ -66,7 +66,6 @@ partial class MainForm
             PrimaryEnabled = false
         };
         btnQuickSync.SizeToFit();
-        btnQuickSync.Height = btnConnect.Height;
 
         btnAdvanced = new Button
         {
@@ -109,6 +108,9 @@ partial class MainForm
         };
         pnlButtons.Controls.AddRange(
             new Control[] { btnConnect, btnDownload, btnUpload, btnDelete, btnQuickSync, btnAdvanced });
+        // btnConnect only reaches its true AutoSize height once parented and its font is
+        // inherited from the Form -- copying it before this point captures a stale value.
+        btnQuickSync.Height = btnConnect.Height;
 
         treeFiles = new TreeView
         {
