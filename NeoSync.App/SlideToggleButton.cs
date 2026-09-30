@@ -28,6 +28,8 @@ internal sealed class SlideToggleButton : Control
     private bool _pressed;
     private readonly System.Windows.Forms.Timer _animTimer;
 
+    private int TextAreaWidth => Math.Max(0, Width - ArrowZoneWidth);
+
     public SlideToggleButton(string primaryText, string secondaryText)
     {
         PrimaryText = primaryText;
@@ -38,6 +40,16 @@ internal sealed class SlideToggleButton : Control
         _animTimer.Tick += AnimTimer_Tick;
     }
 
+    /// <summary>Sizes the control to comfortably fit the wider of the two labels plus the
+    /// arrow zone, using the same padding feel as a normal AutoSize button.</summary>
+    public void SizeToFit(int horizontalPadding = 16)
+    {
+        int textWidth = Math.Max(
+            TextRenderer.MeasureText(PrimaryText, Font).Width,
+            TextRenderer.MeasureText(SecondaryText, Font).Width);
+        Width = textWidth + horizontalPadding + ArrowZoneWidth;
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing) _animTimer.Dispose();
@@ -46,8 +58,8 @@ internal sealed class SlideToggleButton : Control
 
     private void AnimTimer_Tick(object? sender, EventArgs e)
     {
-        int target = _showingSecondary ? Width : 0;
-        int step = Math.Max(2, Width / 6);
+        int target = _showingSecondary ? TextAreaWidth : 0;
+        int step = Math.Max(2, TextAreaWidth / 6);
         if (_slideOffset < target) _slideOffset = Math.Min(target, _slideOffset + step);
         else if (_slideOffset > target) _slideOffset = Math.Max(target, _slideOffset - step);
         Invalidate();
@@ -72,7 +84,7 @@ internal sealed class SlideToggleButton : Control
         if (!ClientRectangle.Contains(e.Location)) return;
         if (_animTimer.Enabled) return; // ignore clicks mid-slide
 
-        if (e.X >= Width - ArrowZoneWidth)
+        if (e.X >= TextAreaWidth)
         {
             _showingSecondary = !_showingSecondary;
             _animTimer.Start();
@@ -90,7 +102,7 @@ internal sealed class SlideToggleButton : Control
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
-        bool hoverArrow = e.X >= Width - ArrowZoneWidth;
+        bool hoverArrow = e.X >= TextAreaWidth;
         if (hoverArrow != _hoverArrow) { _hoverArrow = hoverArrow; Invalidate(); }
     }
 
@@ -119,7 +131,7 @@ internal sealed class SlideToggleButton : Control
             : PushButtonState.Normal;
         ButtonRenderer.DrawButton(g, rect, state);
 
-        int textAreaWidth = rect.Width - ArrowZoneWidth;
+        int textAreaWidth = TextAreaWidth;
         using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
 
         // Clip the two sliding labels to the text zone so neither bleeds into the arrow zone.

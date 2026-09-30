@@ -61,10 +61,12 @@ partial class MainForm
 
         btnQuickSync = new SlideToggleButton("Quick Sync", "Open Folder")
         {
-            Size           = new Size(118, 23),
+            Font           = Font,
             Margin         = new Padding(16, 0, 6, 0),
             PrimaryEnabled = false
         };
+        btnQuickSync.SizeToFit();
+        btnQuickSync.Height = btnConnect.Height;
 
         btnAdvanced = new Button
         {
@@ -110,11 +112,12 @@ partial class MainForm
 
         treeFiles = new TreeView
         {
-            Dock          = DockStyle.Fill,
-            ShowLines     = true,
-            ShowRootLines = true,
-            ShowPlusMinus = true,
-            Font          = new Font("Segoe UI", 9f)
+            Dock             = DockStyle.Fill,
+            ShowLines        = true,
+            ShowRootLines    = true,
+            ShowPlusMinus    = true,
+            ShowNodeToolTips = true,
+            Font             = new Font("Segoe UI", 9f)
         };
 
         tableLayout = new TableLayoutPanel
