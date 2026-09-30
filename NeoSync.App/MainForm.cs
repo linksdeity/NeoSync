@@ -2,6 +2,7 @@ using NeoSync.Core.Device;
 using NeoSync.Core.Ipc;
 using NeoSync.Core.Protocol;
 using NeoSync.Core.Usb;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -82,8 +83,10 @@ internal sealed partial class MainForm : Form
             treeFiles.Nodes.Clear();
             btnDownload.Enabled  = false;
             btnUpload.Enabled    = false;
+            btnDelete.Enabled    = false;
             btnQuickSync.Enabled = false;
             btnConnect.Text      = "Connect";
+            lblDeviceInfo.Text   = "";
             SetStatus("Disconnecting\u2026");
 
             // BD04 sometimes lands in a transient failed-start state when the Neo
@@ -101,11 +104,13 @@ internal sealed partial class MainForm : Form
         btnConnect.Enabled   = false;
         btnDownload.Enabled  = false;
         btnUpload.Enabled    = false;
+        btnDelete.Enabled    = false;
         btnQuickSync.Enabled = false;
         treeFiles.Nodes.Clear();
         _applets.Clear();
         _device?.Dispose();
         _device = null;
+        lblDeviceInfo.Text = "";
 
         Task.Run(ConnectAsync).ContinueWith(t =>
         {
@@ -168,11 +173,44 @@ internal sealed partial class MainForm : Form
             }));
     }
 
+    private void btnDelete_Click(object sender, EventArgs e)
+    {
+        if (_device is null) return;
+        if (treeFiles.SelectedNode?.Tag is not (NeoApplet applet, int fileIndex)) return;
+
+        string? preview = GetSelectedFilePreviewText();
+        string previewLine = string.IsNullOrEmpty(preview) ? "(no preview available)" : preview;
+
+        var confirm = MessageBox.Show(this,
+            $"Delete file {fileIndex} on the Neo?\r\n\r\nPreview: {previewLine}\r\n\r\nThis cannot be undone.",
+            "NeoSync - Delete File", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+        if (confirm != DialogResult.Yes) return;
+
+        SetStatus("Deleting…");
+        btnDelete.Enabled = false;
+
+        Task.Run(() => DeleteFile(applet, fileIndex))
+            .ContinueWith(_ => Invoke(() =>
+            {
+                btnDelete.Enabled = treeFiles.SelectedNode != null;
+            }));
+    }
+
+    /// <summary>Returns the preview text already shown in the tree for the selected file,
+    /// without a fresh device read.</summary>
+    private string? GetSelectedFilePreviewText()
+    {
+        TreeNode? node = treeFiles.SelectedNode;
+        if (node is null) return null;
+        return node.Nodes.Count > 0 ? node.Nodes[0].Text : node.Text;
+    }
+
     private void treeFiles_AfterSelect(object sender, TreeViewEventArgs e)
     {
         bool fileSelected = e.Node?.Tag is (NeoApplet, int);
         btnDownload.Enabled = fileSelected;
         btnUpload.Enabled   = fileSelected;
+        btnDelete.Enabled   = fileSelected;
     }
 
     private void btnQuickSync_Click(object sender, EventArgs e)
@@ -191,6 +229,18 @@ internal sealed partial class MainForm : Form
                     SetStatus($"Quick Sync failed: {t.Exception.InnerException?.Message ?? t.Exception.Message}");
             });
         });
+    }
+
+    private void OpenQuickSyncFolder()
+    {
+        string folder = QuickSyncSettings.GetFolder();
+        Directory.CreateDirectory(folder);
+        try { Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true }); }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Couldn't open the folder:\r\n{ex.Message}",
+                "NeoSync - Open Quick Sync Folder", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 
     private void ChangeQuickSyncFolder()
@@ -405,7 +455,8 @@ internal sealed partial class MainForm : Form
                 _device = new NeoDevice(earlyTransport);
                 Invoke(() => SetStatus("Enumerating files…"));
                 _applets = _device.EnumerateApplets();
-                Invoke(() => PopulateTree(_applets));
+                uint earlyAvailRam = _device.GetAvailableRam();
+                Invoke(() => PopulateTree(_applets, earlyAvailRam));
                 return;
             }
 
@@ -465,8 +516,9 @@ internal sealed partial class MainForm : Form
         // Step 3: enumerate applets
         Invoke(() => SetStatus("Enumerating files…"));
         _applets = _device.EnumerateApplets();
+        uint availRam = _device.GetAvailableRam();
 
-        Invoke(() => PopulateTree(_applets));
+        Invoke(() => PopulateTree(_applets, availRam));
     }
 
     // ── File transfer helpers ─────────────────────────────────────────────────
@@ -679,6 +731,27 @@ internal sealed partial class MainForm : Form
         return result.ToArray();
     }
 
+    /// <summary>Deletes a file's content by writing an empty (pad-only) buffer -
+    /// AlphaWord treats a file as empty once its AllocSize drops to MinSize.</summary>
+    private void DeleteFile(NeoApplet applet, int fileIndex)
+    {
+        byte[] data = EncodeAlphaWordText(string.Empty);
+        try
+        {
+            bool ok = _device?.WriteFile(applet, fileIndex, data) ?? false;
+            Invoke(() => SetStatus(ok ? "File deleted." : "Delete failed."));
+            if (ok)
+            {
+                uint availRam = _device?.GetAvailableRam() ?? 0;
+                Invoke(() => PopulateTree(_applets, availRam));
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(data);
+        }
+    }
+
     // ── Diagnostics ───────────────────────────────────────────────────────────
 
     /// <summary>Appends Windows PnP/System event log entries since <paramref name="after"/> to the diag log.</summary>
@@ -767,7 +840,7 @@ internal sealed partial class MainForm : Form
 
     // ── UI helpers ────────────────────────────────────────────────────────────
 
-    private void PopulateTree(List<NeoApplet> applets)
+    private void PopulateTree(List<NeoApplet> applets, uint? availRam = null)
     {
         treeFiles.BeginUpdate();
         treeFiles.Nodes.Clear();
@@ -826,6 +899,8 @@ internal sealed partial class MainForm : Form
         btnConnect.Text      = "Disconnect";
         btnConnect.Enabled   = true;
         btnQuickSync.Enabled = true;
+        if (availRam.HasValue)
+            lblDeviceInfo.Text = $"Free: {FormatFileSize(availRam.Value)}";
     }
 
     private static string FormatFileSize(uint bytes)
