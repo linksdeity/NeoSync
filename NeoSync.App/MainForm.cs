@@ -341,13 +341,13 @@ internal sealed partial class MainForm : Form
         string switchResult = NeoSyncHelperClient.Send("SWITCH");
         bool switched = switchResult == "OK";
         string switchDiag = switchResult.StartsWith("FAIL:") ? switchResult[5..] : switchResult;
-        DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:HH:mm:ss}] Service SWITCH \u2192 {switchResult}\n");
+        DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Service SWITCH \u2192 {switchResult}\n");
 
         if (switched)
         {
             // Locate BD01 instance in the PnP registry once for per-iteration diagnostics.
             string? bd01Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD01");
-            DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:HH:mm:ss}] BD01 instanceId={bd01Id ?? "(not in registry)"}\n");
+            DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] BD01 instanceId={bd01Id ?? "(not in registry)"}\n");
 
             // Poll for up to 25 seconds; open immediately once the interface appears.
             const int maxWaitMs = 25_000;
@@ -389,7 +389,7 @@ internal sealed partial class MainForm : Form
                     }
                 }
                 DiagnosticsSettings.AppendLog(logPath,
-                    $"[{DateTime.Now:HH:mm:ss.fff}] BD01 t={elapsed}ms: {presInfo} {cmInfo} {cfgInfo} diag={pollDiag}\n");
+                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] BD01 t={elapsed}ms: {presInfo} {cmInfo} {cfgInfo} diag={pollDiag}\n");
 
                 if (earlyTransport is not null) break;
 
@@ -401,7 +401,7 @@ internal sealed partial class MainForm : Form
 
             if (earlyTransport is not null)
             {
-                DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:HH:mm:ss}] TryOpen=True (after switch, {elapsed}ms)\n");
+                DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] TryOpen=True (after switch, {elapsed}ms)\n");
                 _device = new NeoDevice(earlyTransport);
                 Invoke(() => SetStatus("Enumerating files…"));
                 _applets = _device.EnumerateApplets();
@@ -409,7 +409,7 @@ internal sealed partial class MainForm : Form
                 return;
             }
 
-            DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:HH:mm:ss}] Timeout after {maxWaitMs}ms\n");
+            DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Timeout after {maxWaitMs}ms\n");
             AppendPnpEvents(logPath, switchTime);
             Invoke(() => { SetStatus("BD01 did not respond. Click Connect again first; if it keeps failing, unplug and replug the Neo."); btnConnect.Text = "Connect"; btnConnect.Enabled = true; });
             return;
@@ -448,7 +448,7 @@ internal sealed partial class MainForm : Form
             step2Elapsed += step2PollMs;
         }
 
-        DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:HH:mm:ss}] TryOpen={transport is not null} - {tryOpenDiag}\n");
+        DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] TryOpen={transport is not null} - {tryOpenDiag}\n");
         if (transport is null)
         {
             Invoke(() =>
@@ -685,7 +685,7 @@ internal sealed partial class MainForm : Form
     private static void AppendPnpEvents(string logPath, DateTime after)
     {
         var events = QueryRecentPnpEvents(after);
-        DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:HH:mm:ss}] PnP events since switch ({events.Count}):\n");
+        DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] PnP events since switch ({events.Count}):\n");
         foreach (string ev in events)
             DiagnosticsSettings.AppendLog(logPath, ev + "\n");
     }
@@ -727,7 +727,7 @@ internal sealed partial class MainForm : Form
 
                         if (msg.Length > 300) msg = msg[..300] + "…";
                         msg = msg.Replace('\r', ' ').Replace('\n', ' ');
-                        results.Add($"  [{channel}] {rec.TimeCreated:HH:mm:ss.fff} {rec.ProviderName} Id={rec.Id}: {msg}");
+                        results.Add($"  [{channel}] {rec.TimeCreated:yyyy-MM-dd HH:mm:ss.fff} {rec.ProviderName} Id={rec.Id}: {msg}");
                     }
                     count++;
                 }

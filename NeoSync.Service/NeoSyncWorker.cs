@@ -132,7 +132,7 @@ internal sealed class NeoSyncWorker : BackgroundService
     {
         var state = NeoDriverState.Detect();
         _logger.LogWarning("SWITCH: BD04={bd04} BD01={bd01}", state.Hid, state.Comms);
-        DiagnosticsSettings.AppendLog(log, $"[{DateTime.Now:HH:mm:ss}] SWITCH start BD04={state.Hid} BD01={state.Comms}\n");
+        DiagnosticsSettings.AppendLog(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] SWITCH start BD04={state.Hid} BD01={state.Comms}\n");
 
         // Fast path: BD01 may already be fully switched and ready (e.g. from a previous
         // Connect this session) - BD04 may not even physically exist anymore at this point,
@@ -236,7 +236,7 @@ internal sealed class NeoSyncWorker : BackgroundService
 
         bool switched = NeoHidSwitcher.TrySwitchToCommsMode(out string diag);
         _logger.LogWarning("SWITCH: attempt switched={ok} diag={diag}", switched, diag);
-        DiagnosticsSettings.AppendLog(log, $"[{DateTime.Now:HH:mm:ss}] attempt={switched} - {diag}\n");
+        DiagnosticsSettings.AppendLog(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] attempt={switched} - {diag}\n");
 
         if (!switched)
         {
@@ -362,7 +362,7 @@ internal sealed class NeoSyncWorker : BackgroundService
         Bd04WinUsbCycle.RemoveStagedByOriginalName("neosync_bd04.inf");
         RunProcess(Path.Combine(sys, "pnputil.exe"), $"/add-driver \"{bd04Inf}\"");
         var bd04State = NeoDriverState.Detect();
-        DiagnosticsSettings.AppendLog(log, $"[{DateTime.Now:HH:mm:ss}] SETUP_DRIVERS: BD04={bd04State.Hid}\n");
+        DiagnosticsSettings.AppendLog(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] SETUP_DRIVERS: BD04={bd04State.Hid}\n");
         if (bd04State.Hid is NeoDriverKind.Composite or NeoDriverKind.DriverError or NeoDriverKind.Other)
         {
             Bd04WinUsbCycle.ForceInstall("USB\\VID_081E&PID_BD04", bd04Inf);

@@ -12,5 +12,5 @@ internal static class DbgLog
     }
 
     public static void W(string msg)
-        => DiagnosticsSettings.AppendLog(FilePath, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\r\n");
+        => DiagnosticsSettings.AppendLog(FilePath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {msg}\r\n");
 }
