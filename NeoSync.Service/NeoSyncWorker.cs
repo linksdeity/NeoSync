@@ -120,7 +120,7 @@ internal sealed class NeoSyncWorker : BackgroundService
         // replug (a real reset) and click Connect again rather than retrying automatically.
         var (bd01Id, diag) = TrySwitchOnce(log);
 
-        if (bd01Id is null) return $"FAIL:{diag} - try unplugging and replugging the Neo, then Connect again";
+        if (bd01Id is null) return $"FAIL:{diag} - click Connect again first (often just works); if it keeps failing, unplug and replug the Neo and try again";
         NeoUsbDiag.GrantDeviceUserAccess(bd01Id);
         return "OK";
     }
@@ -174,7 +174,7 @@ internal sealed class NeoSyncWorker : BackgroundService
                 if (state.Comms == NeoDriverKind.WinUsb && NeoUsbDiag.GetDevicePresence(bd01Instance).Present)
                     return (bd01Instance, "");
 
-                return (null, "BD01 was already switched but failed to start - unplug and replug the Neo, then try Connect again");
+                return (null, "BD01 was already switched but failed to start - click Connect again first; if it keeps failing, unplug and replug the Neo");
             }
         }
 
@@ -230,7 +230,7 @@ internal sealed class NeoSyncWorker : BackgroundService
                 // to progressively wedge this device's Windows PnP state until only a reboot
                 // fixes it. Leave the driver staged; a physical replug is the more reliable
                 // recovery than another install/remove cycle.
-                return (null, "BD04 did not re-enumerate with WinUSB - unplug and replug the Neo, then try Connect again");
+                return (null, "BD04 did not re-enumerate with WinUSB - click Connect again first; if it keeps failing, unplug and replug the Neo");
             }
         }
 

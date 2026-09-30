@@ -411,7 +411,7 @@ internal sealed partial class MainForm : Form
 
             DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:HH:mm:ss}] Timeout after {maxWaitMs}ms\n");
             AppendPnpEvents(logPath, switchTime);
-            Invoke(() => { SetStatus("BD01 did not respond. Unplug and replug the Neo, then click Connect again."); btnConnect.Text = "Connect"; btnConnect.Enabled = true; });
+            Invoke(() => { SetStatus("BD01 did not respond. Click Connect again first; if it keeps failing, unplug and replug the Neo."); btnConnect.Text = "Connect"; btnConnect.Enabled = true; });
             return;
         }
         else
