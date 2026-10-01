@@ -40,9 +40,8 @@ internal sealed class ReplugStatusDialog : Form
             MaximumSize = new Size(480, 0),
             Text =
                 "If the Neo is already plugged in, unplug it now.\r\n" +
-                "Then plug it in and wait for the USB connect sound (or the keyboard light).\r\n\r\n" +
-                "Click OK once Windows has recognised it as a keyboard, or Cancel to skip\r\n" +
-                "(the driver is staged and will apply when NeoSync connects).",
+                "Then plug it in — this will continue automatically once the status below shows ready.\r\n\r\n" +
+                "Click Cancel to skip instead (the driver is staged and will apply when NeoSync connects).",
             Margin = new Padding(0, 0, 0, 8)
         };
 
@@ -59,23 +58,23 @@ internal sealed class ReplugStatusDialog : Form
             AutoSize      = true,
             Anchor        = AnchorStyles.Right
         };
-        var btnCancel = new Button { Text = "Cancel", AutoSize = true, DialogResult = DialogResult.Cancel, Margin = new Padding(6, 0, 0, 0) };
-        var btnOk     = new Button { Text = "OK",     AutoSize = true, DialogResult = DialogResult.OK };
-        pnlButtons.Controls.AddRange(new Control[] { btnCancel, btnOk });
+        var btnCancel = new Button { Text = "Cancel", AutoSize = true, DialogResult = DialogResult.Cancel };
+        pnlButtons.Controls.Add(btnCancel);
 
         layout.Controls.Add(lblInstructions, 0, 0);
         layout.Controls.Add(lblState,        0, 1);
         layout.Controls.Add(pnlButtons,      0, 2);
         Controls.Add(layout);
 
-        AcceptButton = btnOk;
         CancelButton = btnCancel;
 
-        UpdateState();
         _pollTimer = new System.Windows.Forms.Timer { Interval = 500 };
         _pollTimer.Tick += (_, _) => UpdateState();
-        _pollTimer.Start();
         FormClosed += (_, _) => _pollTimer.Dispose();
+        // Defer the first check (and the auto-close it can trigger) until the dialog is
+        // actually showing -- setting DialogResult before ShowDialog's modal loop starts
+        // has no effect, so an already-ready device wouldn't close the dialog at all.
+        Shown += (_, _) => { UpdateState(); _pollTimer.Start(); };
     }
 
     private void UpdateState()
@@ -94,5 +93,9 @@ internal sealed class ReplugStatusDialog : Form
         };
         lblState.Text      = $"Current state: {desc}";
         lblState.ForeColor = ready ? Color.DarkGreen : Color.Firebrick;
+        // Our own live detection is the source of truth now -- no more guessing from
+        // USB sounds or the keyboard's light, which don't reliably mean the driver is bound.
+        // Setting DialogResult on a shown modal form closes it immediately.
+        if (ready) DialogResult = DialogResult.OK;
     }
 }

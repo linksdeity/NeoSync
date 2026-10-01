@@ -208,8 +208,6 @@ internal sealed class DriverSetupForm : Form
 
             // Trust the cert and stage the BD01 INF via the NeoSyncHelper service (LocalSystem).
             string setupResult = NeoSyncHelperClient.Send($"SETUP_DRIVERS {driverDir}");
-            Enabled = true;
-            Cursor  = Cursors.Default;
             RefreshStatusLabels();
 
             if (!setupResult.StartsWith("OK"))
@@ -218,43 +216,61 @@ internal sealed class DriverSetupForm : Form
                     "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-
-            if (new ReplugStatusDialog().ShowDialog(this) == DialogResult.Cancel) return;
-
-            Cursor  = Cursors.WaitCursor;
-            Enabled = false;
-
-            // Mode switch via service (handles BD04 driver install, control transfers, cleanup).
-            string switchResult = NeoSyncHelperClient.Send("SWITCH");
-
-            string msg;
-            if (switchResult != "OK")
-            {
-                msg = "The driver has been staged but the mode switch failed (device may not be ready).\n\n" +
-                      "Click Connect in the main window - the driver will be applied automatically.";
-            }
-            else
-            {
-                bool bd01Present = false;
-                for (int i = 0; i < 150 && !bd01Present; i++)
-                {
-                    bd01Present = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD01") is not null;
-                    if (!bd01Present) Thread.Sleep(200);
-                }
-                msg = bd01Present
-                    ? "Driver setup complete. Click Connect in the main window to start."
-                    : "The switch succeeded but BD01 took too long to enumerate.\n\nClick Connect in the main window.";
-            }
-            // Refresh in place rather than closing -- shows what the driver state actually
-            // ended up as, instead of just trusting the completion message.
-            RefreshStatusLabels();
-            MessageBox.Show(this, msg, "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         finally
         {
             Enabled = true;
             Cursor  = Cursors.Default;
         }
+
+        if (new ReplugStatusDialog().ShowDialog(this) == DialogResult.Cancel) return;
+
+        Cursor  = Cursors.WaitCursor;
+        Enabled = false;
+
+        // The mode switch and BD01 wait can take up to 30s -- run off the UI thread so a
+        // slow or not-quite-ready device can't freeze the dialog (previously blocked here).
+        Task.Run(() =>
+        {
+            string msg;
+            try
+            {
+                // Mode switch via service (handles BD04 driver install, control transfers, cleanup).
+                string switchResult = NeoSyncHelperClient.Send("SWITCH");
+
+                if (switchResult != "OK")
+                {
+                    msg = "The driver has been staged but the mode switch failed (device may not be ready).\n\n" +
+                          "Click Connect in the main window - the driver will be applied automatically.";
+                }
+                else
+                {
+                    bool bd01Present = false;
+                    for (int i = 0; i < 150 && !bd01Present; i++)
+                    {
+                        bd01Present = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD01") is not null;
+                        if (!bd01Present) Thread.Sleep(200);
+                    }
+                    msg = bd01Present
+                        ? "Driver setup complete. Click Connect in the main window to start."
+                        : "The switch succeeded but BD01 took too long to enumerate.\n\nClick Connect in the main window.";
+                }
+            }
+            catch (Exception ex)
+            {
+                msg = $"Driver setup step failed: {ex.Message}";
+            }
+
+            Invoke(() =>
+            {
+                Enabled = true;
+                Cursor  = Cursors.Default;
+                // Refresh in place rather than closing -- shows what the driver state actually
+                // ended up as, instead of just trusting the completion message.
+                RefreshStatusLabels();
+                MessageBox.Show(this, msg, "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            });
+        });
     }
 
     private void OnAutoInstall(object? sender, EventArgs e)
