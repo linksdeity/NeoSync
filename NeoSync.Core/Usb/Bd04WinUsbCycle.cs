@@ -183,6 +183,21 @@ public static class Bd04WinUsbCycle
         DbgLog.W($"  pnputil output: {output.Replace('\n', '|')}");
     }
 
+    /// <summary>
+    /// Fully removes a device node (not just a restart), forcing Windows to treat the next
+    /// enumeration as brand new hardware and redo driver selection from scratch. A plain
+    /// restart has been observed to not be enough to restore the inbox HID keyboard driver
+    /// after our WinUSB package is removed - this is the stronger fix for that. For a
+    /// still-physically-connected USB device, Windows re-discovers and re-enumerates it
+    /// almost immediately afterward.
+    /// </summary>
+    public static void RemoveDeviceNode(string instanceId)
+    {
+        DbgLog.W($"Bd04WinUsbCycle.RemoveDeviceNode: {instanceId}");
+        string output = RunPnputil($"/remove-device \"{instanceId}\" /subtree");
+        DbgLog.W($"  pnputil output: {output.Replace('\n', '|')}");
+    }
+
     private static string RunPnputil(string args)
     {
         try

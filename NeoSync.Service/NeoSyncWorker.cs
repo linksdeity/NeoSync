@@ -405,16 +405,18 @@ internal sealed class NeoSyncWorker : BackgroundService
         var (ok04, out04, ok01, out01) = NeoDriverInstaller.RemoveBoth(null, null);
 
         // Deleting the driver package from the store doesn't necessarily clear a live,
-        // still-connected device's own binding to it -- a physical unplug/replug alone
-        // has been observed not to be enough. Force it with a device restart at the CM
-        // level, same mechanism used elsewhere to clear a stuck driver state. Only
-        // meaningful if the device is actually present right now -- BD01 in particular
-        // usually isn't (it only exists after a mode switch, not just from being plugged
-        // in), so there's nothing live to restart most of the time, which is fine.
+        // still-connected device's own binding to it -- a plain device restart has been
+        // observed to not always be enough to get Windows to redo driver selection and
+        // actually rebind the inbox HID keyboard driver (BD04 can come back still not
+        // working as a keyboard). Fully remove the device node instead, forcing a real
+        // re-enumeration from scratch. Only meaningful if the device is actually present
+        // right now -- BD01 in particular usually isn't (it only exists after a mode
+        // switch, not just from being plugged in), so there's nothing live to reset most
+        // of the time, which is fine.
         string? bd04Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD04");
-        if (bd04Id is not null) Bd04WinUsbCycle.RestartDevice(bd04Id);
+        if (bd04Id is not null) Bd04WinUsbCycle.RemoveDeviceNode(bd04Id);
         string? bd01Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD01");
-        if (bd01Id is not null) Bd04WinUsbCycle.RestartDevice(bd01Id);
+        if (bd01Id is not null) Bd04WinUsbCycle.RemoveDeviceNode(bd01Id);
 
         // Report pnputil's own real per-device result -- this is reliable regardless of
         // whether the device is currently connected, unlike re-checking the registry

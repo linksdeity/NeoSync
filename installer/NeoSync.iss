@@ -130,12 +130,15 @@ begin
 end;
 
 // Deleting the driver package from the store doesn't necessarily clear a live,
-// still-connected device's own binding to it -- observed directly during testing,
-// same issue the in-app Remove WinUSB Drivers button had before it was fixed to
-// restart each device afterward. The service is already stopped/deleted by this
-// point in uninstall, so this calls pnputil directly (the uninstaller itself
-// already runs elevated).
-procedure RestartNeoDevices;
+// still-connected device's own binding to it -- a plain device restart has been
+// observed to not always be enough to get Windows to redo driver selection and
+// actually rebind the inbox HID keyboard driver (BD04 can come back still not
+// working as a keyboard). Fully remove the device node instead, forcing a real
+// re-enumeration from scratch (a still-connected USB device re-appears almost
+// immediately on its own). The service is already stopped/deleted by this point
+// in uninstall, so this calls pnputil directly (the uninstaller itself already
+// runs elevated).
+procedure ResetNeoDevices;
 var
   DevIds, InstIds: TArrayOfString;
   i, j: Integer;
@@ -149,7 +152,7 @@ begin
     if RegGetSubkeyNames(HKLM, 'SYSTEM\CurrentControlSet\Enum\USB\' + DevIds[i], InstIds) then
       for j := 0 to GetArrayLength(InstIds) - 1 do
         Exec(ExpandConstant('{sys}') + '\pnputil.exe',
-          '/restart-device "USB\' + DevIds[i] + '\' + InstIds[j] + '"',
+          '/remove-device "USB\' + DevIds[i] + '\' + InstIds[j] + '" /subtree',
           '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   end;
 end;
@@ -166,6 +169,6 @@ begin
       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     RemoveNeoSyncDriverInfs;
     RemoveNeoSyncCert;
-    RestartNeoDevices;
+    ResetNeoDevices;
   end;
 end;
