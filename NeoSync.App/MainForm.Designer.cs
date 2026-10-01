@@ -30,6 +30,7 @@ partial class MainForm
         {
             components?.Dispose();
             _device?.Dispose();
+            _deviceWatcher.Dispose();
         }
         base.Dispose(disposing);
     }

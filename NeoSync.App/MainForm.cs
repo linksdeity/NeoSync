@@ -16,6 +16,10 @@ internal sealed partial class MainForm : Form
     private uint _usageFreeBytes;
     private bool _usageHasData;
 
+    // Created on the UI thread so its hidden message-only window shares the form's message
+    // pump - ConnectAsync (a background thread) awaits its Tasks, which is thread-safe.
+    private readonly DeviceArrivalWatcher _deviceWatcher = new();
+
     public MainForm()
     {
         InitializeComponent();
@@ -394,6 +398,31 @@ internal sealed partial class MainForm : Form
         string logPath = Path.Combine(Path.GetTempPath(), "neosync_diag.txt");
         DateTime switchTime = DateTime.Now;
 
+        // A cold BD04 (not yet WinUSB) needs its driver force-installed before anything else
+        // can happen - that install+bind is the slow part (several seconds of real OS work),
+        // not the mode switch itself. Do it here as an event-driven wait (arm the watcher,
+        // then ask the service to install) instead of leaving it to SWITCH's own internal
+        // WaitForWinUsb poll, so the UI can reflect it as its own distinct step and the
+        // subsequent SWITCH call finds BD04 already ready and skips straight to sending bytes.
+        if (driverState.Hid != NeoDriverKind.WinUsb)
+        {
+            Invoke(() => SetStatus("Installing WinUSB driver on the Neo\u2026 (one-time, can take several seconds)"));
+            Task<bool> bd04ArrivalTask = _deviceWatcher.WaitForArrivalAsync("vid_081e&pid_bd04", 15_000);
+            string installResult = NeoSyncHelperClient.Send("INSTALL_BD04");
+            DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Service INSTALL_BD04 \u2192 {installResult}\n");
+            if (installResult == "OK")
+            {
+                bool bd04Arrived = bd04ArrivalTask.Result;
+                DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] BD04 WinUSB arrival event observed={bd04Arrived}\n");
+            }
+        }
+
+        // Arm the arrival watcher BEFORE calling SWITCH so a BD01 arrival event firing while
+        // the (up to ~30s) pipe call is in flight can't be missed - the actual presence check
+        // below then has a real OS-event-backed answer instead of re-polling the registry
+        // blind for something the service already confirmed before returning "OK".
+        Task<bool> bd01ArrivalTask = _deviceWatcher.WaitForArrivalAsync("vid_081e&pid_bd01", 30_000);
+
         // Step 1: mode switch via NeoSyncHelper service (LocalSystem; handles all driver ops).
         Invoke(() => SetStatus("Switching to transfer mode\u2026 (can take up to 30s, this is normal)"));
         string switchResult = NeoSyncHelperClient.Send("SWITCH");
@@ -407,7 +436,17 @@ internal sealed partial class MainForm : Form
             string? bd01Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD01");
             DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] BD01 instanceId={bd01Id ?? "(not in registry)"}\n");
 
-            // Poll for up to 25 seconds; open immediately once the interface appears.
+            // The service only returns OK once it has confirmed BD01 present, so this should
+            // already be signaled or resolve near-instantly - a short wait here just confirms
+            // it via the real arrival event rather than trusting the service's text response.
+            bool arrived = bd01ArrivalTask.Result;
+            DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] BD01 arrival event observed={arrived}\n");
+
+            // Poll for up to 25 seconds; open immediately once the interface appears. This
+            // remaining loop is no longer "has it arrived at all" (the watcher above already
+            // answered that) - it's specifically for the handle-open settle window plus the
+            // CM_PROB_FAILED_START self-heal below, both of which need periodic rechecking
+            // regardless of arrival events.
             const int maxWaitMs = 25_000;
             const int pollMs    = 300;
             int elapsed = 0;

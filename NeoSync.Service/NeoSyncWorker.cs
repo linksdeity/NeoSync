@@ -84,6 +84,7 @@ internal sealed class NeoSyncWorker : BackgroundService
         try
         {
             if (command == "SWITCH")                          return CmdSwitch();
+            if (command == "INSTALL_BD04")                    return CmdInstallBd04();
             if (command.StartsWith("RESTART_BD01 "))          return CmdRestartBd01(command[13..]);
             if (command == "FORCE_BD01")                      return CmdForceBd01();
             if (command.StartsWith("SETUP_DRIVERS "))         return CmdSetupDrivers(command[14..]);
@@ -315,6 +316,37 @@ internal sealed class NeoSyncWorker : BackgroundService
         }
 
         return (null, "mode switch failed after retry");
+    }
+
+    /// <summary>Stages+force-installs WinUSB on BD04 only - does NOT wait for it to finish
+    /// binding. The app watches for that itself via DeviceArrivalWatcher (WM_DEVICECHANGE)
+    /// right after calling this, instead of this command blocking on its own poll loop the
+    /// way SWITCH's inline install step still does for its other callers.</summary>
+    private string CmdInstallBd04()
+    {
+        var state = NeoDriverState.Detect();
+        if (state.Hid == NeoDriverKind.WinUsb) return "OK"; // already done
+
+        state = WaitForBd04ToSettle();
+        _logger.LogWarning("INSTALL_BD04: settled as {kind}", state.Hid);
+
+        string inf = Path.Combine(AppContext.BaseDirectory, "driver", "neosync_bd04.inf");
+        if (!File.Exists(inf)) return "FAIL:neosync_bd04.inf not found in service directory";
+        if (state.Hid == NeoDriverKind.Composite)
+            Bd04WinUsbCycle.RemoveStagedByOriginalName("neosync_bd04_composite.inf");
+
+        string? bd04Oem = Bd04WinUsbCycle.Install(inf);
+        _logger.LogWarning("INSTALL_BD04: Install bd04Oem={oem}", bd04Oem ?? "(null)");
+        if (bd04Oem is not null) return "OK";
+
+        // One soft-restart-and-retry, matching SWITCH's own single-retry policy.
+        if (RestartBd04IfPresent())
+        {
+            bd04Oem = Bd04WinUsbCycle.Install(inf);
+            _logger.LogWarning("INSTALL_BD04: retry Install bd04Oem={oem}", bd04Oem ?? "(null)");
+            if (bd04Oem is not null) return "OK";
+        }
+        return "FAIL:BD04 WinUSB install failed - check that the Neo is connected";
     }
 
     /// <summary>Soft-restarts BD04 if it's still physically present (the Neo never actually
