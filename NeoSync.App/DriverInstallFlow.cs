@@ -58,7 +58,8 @@ internal static class DriverInstallFlow
 
             // BD04's actual driver doesn't matter here -- the mode switch below force-fixes
             // whatever driver it has as part of doing the switch itself. All that's needed
-            // first is for the device to be physically present at all.
+            // first is for the device to be physically present at all; the service itself
+            // then waits for its driver state to actually settle before touching it.
             if (!IsBd04Present())
             {
                 dlg.SetStatus("Plug in the Neo to continue…", Color.DarkOrange);
@@ -67,10 +68,6 @@ internal static class DriverInstallFlow
                     if (dlg.Cancelled) { dlg.CloseSafe(); return; }
                     Thread.Sleep(300);
                 }
-                // Being "present" just means Windows has started enumerating it - give
-                // its own default driver a moment to actually finish loading before we
-                // immediately try to force a different one on top of it below.
-                Thread.Sleep(2_000);
                 dlg.RefreshDriverStatus();
             }
 

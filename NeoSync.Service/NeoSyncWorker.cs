@@ -217,6 +217,15 @@ internal sealed class NeoSyncWorker : BackgroundService
         {
             if (state.Hid != NeoDriverKind.WinUsb)
             {
+                // Fixed delays before trying to force WinUSB onto BD04 were a guessing game -
+                // too short and we race Windows' own driver selection, too long and we just
+                // waste time. Instead, actually watch BD04's classification (works no matter
+                // which driver it lands on - inbox HID, the old AlphaSmart Manager/Renaissance
+                // driver, whatever) and wait for it to stop changing, which is a direct signal
+                // that Windows is done with it rather than a guess at how long that takes.
+                state = WaitForBd04ToSettle();
+                _logger.LogWarning("SWITCH: BD04 settled as {kind}", state.Hid);
+
                 string inf = Path.Combine(AppContext.BaseDirectory, "driver", "neosync_bd04.inf");
                 if (!File.Exists(inf)) return (null, "neosync_bd04.inf not found in service directory");
                 if (state.Hid == NeoDriverKind.Composite)
@@ -233,21 +242,8 @@ internal sealed class NeoSyncWorker : BackgroundService
                     if (attempt == 1 && RestartBd04IfPresent()) { state = NeoDriverState.Detect(); continue; }
                     return (null, "BD04 WinUSB install failed - check that the Neo is connected");
                 }
-                bool winUsbReady = Bd04WinUsbCycle.WaitForWinUsb(30_000);
+                bool winUsbReady = Bd04WinUsbCycle.WaitForWinUsb(15_000);
                 _logger.LogWarning("SWITCH: WaitForWinUsb={ready}", winUsbReady);
-                if (!winUsbReady)
-                {
-                    // pnputil itself already reported the install succeeded above (bd04Oem
-                    // was non-null) - a timeout here usually just means our own registry
-                    // read caught the device mid-re-enumeration (same stale/not-present
-                    // class of issue fixed elsewhere), not a real failure. Confirmed by
-                    // testing: closing this error and clicking Connect moments later
-                    // (no restart, just more elapsed time) reliably works. Give it one
-                    // more full wait before restarting anything - a restart here could
-                    // interrupt an install that actually already succeeded.
-                    _logger.LogWarning("SWITCH: WinUSB not detected yet - waiting longer before restarting anything");
-                    winUsbReady = Bd04WinUsbCycle.WaitForWinUsb(30_000);
-                }
                 if (!winUsbReady)
                 {
                     // Do NOT uninstall here: repeated install/uninstall cycles have been observed
@@ -333,6 +329,38 @@ internal sealed class NeoSyncWorker : BackgroundService
         Bd04WinUsbCycle.RestartDevice(bd04Id);
         Thread.Sleep(3_000);
         return true;
+    }
+
+    /// <summary>Waits for BD04's classification to stop changing - a real signal that Windows
+    /// has finished its own driver selection, regardless of which driver it actually landed
+    /// on (inbox HID, the old AlphaSmart Manager/Renaissance driver, WinUSB, whatever). This
+    /// is what lets us detect "the Neo just got plugged in and is still settling" without
+    /// guessing a fixed delay - we just watch the VID/PID-based state until it holds steady.</summary>
+    private NeoDriverState WaitForBd04ToSettle(int timeoutMs = 10_000)
+    {
+        NeoDriverState state = NeoDriverState.Detect();
+        NeoDriverKind lastKind = state.Hid;
+        int stableCount = lastKind == NeoDriverKind.NotSeen ? 0 : 1;
+        const int pollMs = 250;
+        const int neededStableChecks = 4; // ~1s of no change
+        int elapsed = 0;
+
+        while (elapsed < timeoutMs && stableCount < neededStableChecks)
+        {
+            Thread.Sleep(pollMs);
+            elapsed += pollMs;
+            state = NeoDriverState.Detect();
+            if (state.Hid == lastKind && state.Hid != NeoDriverKind.NotSeen)
+            {
+                stableCount++;
+            }
+            else
+            {
+                stableCount = state.Hid == NeoDriverKind.NotSeen ? 0 : 1;
+                lastKind = state.Hid;
+            }
+        }
+        return state;
     }
 
     private static string CmdRestartBd01(string instanceId)
