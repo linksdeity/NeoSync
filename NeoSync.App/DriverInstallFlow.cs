@@ -1,13 +1,15 @@
 using NeoSync.Core.Ipc;
-using NeoSync.Core.Usb;
 
 namespace NeoSync.App;
 
 /// <summary>
-/// The actual "stage drivers, wait for the Neo to be plugged in, switch modes" sequence,
-/// used directly by Advanced &gt; Reinstall WinUSB drivers and by the installer. Deliberately
-/// skips DriverSetupForm's explanatory shell -- that's reserved for the auto-triggered
-/// "drivers aren't ready yet" case, where showing what's wrong first actually matters.
+/// Stages the WinUSB driver package (BD01's INF + the signing cert), used directly by
+/// Advanced &gt; Reinstall WinUSB drivers and by the installer. Deliberately stops there --
+/// the actual mode switch (BD04's WinUSB install, the switch bytes, waiting for BD01) is
+/// left entirely to the main app's own Connect button, which already does it reliably on
+/// its own; trying to also do it here only added fragile timing-dependent steps for no
+/// real benefit. Also skips DriverSetupForm's explanatory shell -- that's reserved for the
+/// auto-triggered "drivers aren't ready yet" case, where showing what's wrong first matters.
 /// </summary>
 internal static class DriverInstallFlow
 {
@@ -47,7 +49,6 @@ internal static class DriverInstallFlow
             NeoSyncHelperClient.Send("REMOVE_DRIVERS");
             string setupResult = NeoSyncHelperClient.Send($"SETUP_DRIVERS {driverDir}");
             dlg.RefreshDriverStatus();
-            RaiseOnComplete(owner, onComplete);
 
             if (!setupResult.StartsWith("OK"))
             {
@@ -56,44 +57,9 @@ internal static class DriverInstallFlow
                 return;
             }
 
-            // BD04's actual driver doesn't matter here -- the mode switch below force-fixes
-            // whatever driver it has as part of doing the switch itself. All that's needed
-            // first is for the device to be physically present at all; the service itself
-            // then waits for its driver state to actually settle before touching it.
-            if (!IsBd04Present())
-            {
-                dlg.SetStatus("Plug in the Neo to continue…", Color.DarkOrange);
-                while (!IsBd04Present())
-                {
-                    if (dlg.Cancelled) { dlg.CloseSafe(); return; }
-                    Thread.Sleep(300);
-                }
-                dlg.RefreshDriverStatus();
-            }
-
-            if (dlg.Cancelled) { dlg.CloseSafe(); return; }
-            dlg.SetStatus("Switching to transfer mode… (can take up to 30 seconds)", SystemColors.ControlText);
-
-            // Handles BD04's driver, the mode-switch control transfers, BD01's driver, and
-            // waiting for BD01 to enumerate -- all inside this one service call.
-            string switchResult = NeoSyncHelperClient.Send("SWITCH");
-            dlg.RefreshDriverStatus();
-
-            if (switchResult != "OK")
-            {
-                // The service's message assumes the main app's Connect button, which doesn't
-                // exist in this flow -- strip that guidance and give advice that fits here instead.
-                string reason = switchResult.StartsWith("FAIL:") ? switchResult[5..] : switchResult;
-                int cutAt = reason.IndexOf(" - click Connect again", StringComparison.Ordinal);
-                if (cutAt >= 0) reason = reason[..cutAt];
-                dlg.SetStatus($"Mode switch failed: {reason}.\n\nIf this keeps happening, unplug and replug the Neo, then try Reinstall again.", Color.Firebrick);
-                dlg.SetFinished();
-                return;
-            }
-
-            dlg.SetStatus("Driver setup complete! Ready to use.", Color.DarkGreen);
+            dlg.SetStatus("Drivers staged! Plug in the Neo and click Connect in the main window.", Color.DarkGreen);
             dlg.SetFinished();
-            Thread.Sleep(1200); // let the success message actually be seen before moving on
+            Thread.Sleep(1200); // let the message actually be seen before moving on
             dlg.CloseSafe();
         }
         catch (Exception ex)
@@ -106,10 +72,6 @@ internal static class DriverInstallFlow
             RaiseOnComplete(owner, onComplete);
         }
     }
-
-    private static bool IsBd04Present()
-        => NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD04") is { } id
-        && NeoUsbDiag.GetDevicePresence(id).Present;
 
     private static void RaiseOnComplete(Form? owner, Action? onComplete)
     {
