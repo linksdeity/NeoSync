@@ -134,10 +134,9 @@ end;
 // observed to not always be enough to get Windows to redo driver selection and
 // actually rebind the inbox HID keyboard driver (BD04 can come back still not
 // working as a keyboard). Fully remove the device node instead, forcing a real
-// re-enumeration from scratch (a still-connected USB device re-appears almost
-// immediately on its own). The service is already stopped/deleted by this point
-// in uninstall, so this calls pnputil directly (the uninstaller itself already
-// runs elevated).
+// re-enumeration from scratch. The service is already stopped/deleted by this
+// point in uninstall, so this calls pnputil directly (the uninstaller itself
+// already runs elevated).
 procedure ResetNeoDevices;
 var
   DevIds, InstIds: TArrayOfString;
@@ -155,6 +154,11 @@ begin
           '/remove-device "USB\' + DevIds[i] + '\' + InstIds[j] + '" /subtree',
           '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   end;
+  // A removed device isn't always re-discovered automatically - explicitly ask Windows
+  // to rescan rather than leave that to chance (same as Device Manager's "Scan for
+  // hardware changes").
+  Exec(ExpandConstant('{sys}') + '\pnputil.exe', '/scan-devices',
+    '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
