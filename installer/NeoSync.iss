@@ -71,32 +71,10 @@ var
 begin
   AppDir := ExpandConstant('{app}');
 
-  // Step 1: cert trust + BD01/BD04 driver staging, via the same SETUP_DRIVERS command
-  // used by "Reinstall WinUSB drivers..." in the app itself.
-  Exec(AppDir + '\NeoSync.App.exe', '--setup-drivers "' + AppDir + '\driver"',
-    AppDir, SW_HIDE, ewWaitUntilTerminated, ResultCode);
-
-  // Step 2: Ask user to connect the Neo (in its default keyboard mode, BD04)
-  if MsgBox('USB Driver Setup' + #13#10#13#10 +
-      'Connect or reconnect the Neo -- unplug and plug it back in as needed -- until it is ' +
-      'emulating a keyboard (the keyboard light is on). Then click OK.' + #13#10#13#10 +
-      'IMPORTANT: after this, the Neo will no longer work as a normal USB keyboard on this PC -- ' +
-      'NeoSync replaces the keyboard driver with its own transfer driver. If you need standalone ' +
-      'keyboard "send" functionality again, use Advanced > Remove WinUSB drivers in NeoSync, then ' +
-      'unplug and replug the Neo.' + #13#10#13#10 +
-      'Click Cancel to skip (the driver is staged and will apply the next time you use NeoSync).',
-      mbConfirmation, MB_OKCANCEL) = IDCANCEL then Exit;
-
-  // Step 3: NeoSync sends the HID mode-switch so BD01 enumerates; Windows auto-applies staged driver
-  Exec(AppDir + '\NeoSync.App.exe', '--switch-to-comms',
-    AppDir, SW_HIDE, ewWaitUntilTerminated, ResultCode);
-
-  if ResultCode = 0 then
-    MsgBox('Driver setup complete. Your Neo is ready to use with NeoSync.', mbInformation, MB_OK)
-  else
-    MsgBox('The mode switch timed out -- the device may still be enumerating.' + #13#10 +
-      'The driver is staged and will be applied automatically when NeoSync first connects.',
-      mbInformation, MB_OK);
+  // Delegates entirely to the app's own driver setup dialog (Advanced > Reinstall WinUSB
+  // drivers) -- staging, the live replug status, and the mode switch are all handled there,
+  // so the installer doesn't need its own separate copy of that flow.
+  Exec(AppDir + '\NeoSync.App.exe', '--driver-setup', AppDir, SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
