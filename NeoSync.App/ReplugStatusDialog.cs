@@ -80,17 +80,28 @@ internal sealed class ReplugStatusDialog : Form
     private void UpdateState()
     {
         NeoDriverKind kind = NeoDriverState.Detect().Hid;
-        bool ready = kind is NeoDriverKind.WinUsb or NeoDriverKind.WindowsHid;
-        string desc = kind switch
-        {
-            NeoDriverKind.NotSeen             => "not seen yet -- plug in the Neo",
-            NeoDriverKind.WindowsHid          => "recognised as a keyboard -- ready!",
-            NeoDriverKind.WinUsb              => "recognised (WinUSB) -- ready!",
-            NeoDriverKind.RenaissanceLearning => "using the old AlphaSmart Manager driver",
-            NeoDriverKind.DriverError         => "driver failed to start",
-            NeoDriverKind.Other               => "driver not yet applied",
-            _                                  => kind.ToString()
-        };
+
+        // NeoDriverState falls back to the last-known registry entry for a device that
+        // isn't currently present (so the main app can still show useful info about a
+        // disconnected Neo) -- but that's exactly wrong here: it previously meant this
+        // dialog could think a long-gone Neo was "ready" from stale data alone, closing
+        // itself (and letting the mode switch proceed) with nothing actually plugged in.
+        string? bd04Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD04");
+        bool present = bd04Id is not null && NeoUsbDiag.GetDevicePresence(bd04Id).Present;
+        bool ready = present && kind is NeoDriverKind.WinUsb or NeoDriverKind.WindowsHid;
+
+        string desc = !present
+            ? "not connected -- plug in the Neo"
+            : kind switch
+            {
+                NeoDriverKind.WindowsHid          => "recognised as a keyboard -- ready!",
+                NeoDriverKind.WinUsb              => "recognised (WinUSB) -- ready!",
+                NeoDriverKind.RenaissanceLearning => "using the old AlphaSmart Manager driver",
+                NeoDriverKind.DriverError         => "driver failed to start",
+                NeoDriverKind.NotSeen             => "not seen yet",
+                NeoDriverKind.Other               => "driver not yet applied",
+                _                                  => kind.ToString()
+            };
         lblState.Text      = $"Current state: {desc}";
         lblState.ForeColor = ready ? Color.DarkGreen : Color.Firebrick;
         // Our own live detection is the source of truth now -- no more guessing from
