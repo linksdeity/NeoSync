@@ -67,6 +67,10 @@ internal static class DriverInstallFlow
                     if (dlg.Cancelled) { dlg.CloseSafe(); return; }
                     Thread.Sleep(300);
                 }
+                // Being "present" just means Windows has started enumerating it - give
+                // its own default driver a moment to actually finish loading before we
+                // immediately try to force a different one on top of it below.
+                Thread.Sleep(2_000);
                 dlg.RefreshDriverStatus();
             }
 
