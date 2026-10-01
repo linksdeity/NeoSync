@@ -46,6 +46,7 @@ internal static class DriverInstallFlow
             // same clean slate as a machine that's never had NeoSync installed.
             NeoSyncHelperClient.Send("REMOVE_DRIVERS");
             string setupResult = NeoSyncHelperClient.Send($"SETUP_DRIVERS {driverDir}");
+            dlg.RefreshDriverStatus();
             RaiseOnComplete(owner, onComplete);
 
             if (!setupResult.StartsWith("OK"))
@@ -66,6 +67,7 @@ internal static class DriverInstallFlow
                     if (dlg.Cancelled) { dlg.CloseSafe(); return; }
                     Thread.Sleep(300);
                 }
+                dlg.RefreshDriverStatus();
             }
 
             if (dlg.Cancelled) { dlg.CloseSafe(); return; }
@@ -74,6 +76,7 @@ internal static class DriverInstallFlow
             // Handles BD04's driver, the mode-switch control transfers, BD01's driver, and
             // waiting for BD01 to enumerate -- all inside this one service call.
             string switchResult = NeoSyncHelperClient.Send("SWITCH");
+            dlg.RefreshDriverStatus();
 
             if (switchResult != "OK")
             {

@@ -168,7 +168,9 @@ internal sealed class DriverSetupForm : Form
         return string.Join("", lines);
     }
 
-    private static Label MakeStatusLabel(string name, NeoDriverKind kind)
+    /// <summary>Builds a status label for a BD04/BD01 driver kind -- shared with
+    /// DriverProgressDialog so both show identical driver-state wording.</summary>
+    internal static Label MakeStatusLabel(string name, NeoDriverKind kind)
     {
         bool ok   = kind == NeoDriverKind.WinUsb || kind == NeoDriverKind.WindowsHid;
         string icon = ok ? "✓" : "✗";
