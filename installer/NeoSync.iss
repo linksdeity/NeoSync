@@ -108,8 +108,12 @@ begin
         InfPath := InfDir + FindRec.Name;
         if LoadStringFromFile(InfPath, InfContent) then
           if Pos('VID_081E', String(InfContent)) > 0 then
+            // /force is required here -- without it, pnputil silently fails to remove
+            // a driver package that's still actively bound to a connected device (the
+            // common case: uninstalling with the Neo plugged in), leaving BD04 stuck on
+            // WinUSB with no real keyboard driver ever getting a chance to bind.
             Exec(ExpandConstant('{sys}') + '\pnputil.exe',
-              '/delete-driver ' + FindRec.Name + ' /uninstall',
+              '/delete-driver ' + FindRec.Name + ' /uninstall /force',
               '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
       until not FindNext(FindRec);
     finally
