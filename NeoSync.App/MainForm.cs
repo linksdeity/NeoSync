@@ -23,13 +23,6 @@ internal sealed partial class MainForm : Form
 
     // ── Button handlers ───────────────────────────────────────────────────────
 
-    private void ShowDriverSetup()
-    {
-        var state = NeoDriverState.Detect();
-        using var dlg = new DriverSetupForm(state);
-        dlg.ShowDialog(this);
-    }
-
     private void RemoveDrivers()
     {
         var before = NeoDriverState.Detect();

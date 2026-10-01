@@ -1,5 +1,4 @@
 using NeoSync.Core.Ipc;
-using NeoSync.Core.Usb;
 
 namespace NeoSync.App;
 
@@ -21,16 +20,13 @@ static class Program
                 Environment.Exit(result == "OK" ? 0 : 1);
                 return;
             }
-            // Shows the same driver setup dialog used by Advanced > Reinstall WinUSB drivers in
+            // Runs the same direct install flow used by Advanced > Reinstall WinUSB drivers in
             // the running app -- the installer launches this instead of re-implementing the
             // staging/replug/mode-switch steps itself, so there's only one real implementation.
             if (args[0].Equals("--driver-setup", StringComparison.OrdinalIgnoreCase))
             {
                 ApplicationConfiguration.Initialize();
-                // ShowDialog (not Application.Run) so its Close/Cancel button actually
-                // terminates the process -- DialogResult only auto-closes modal dialogs.
-                using var dlg = new DriverSetupForm(NeoDriverState.Detect());
-                dlg.ShowDialog();
+                DriverInstallFlow.Run(null);
                 return;
             }
         }

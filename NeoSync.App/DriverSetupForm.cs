@@ -1,4 +1,3 @@
-using NeoSync.Core.Ipc;
 using NeoSync.Core.Usb;
 
 namespace NeoSync.App;
@@ -96,7 +95,7 @@ internal sealed class DriverSetupForm : Form
             AutoSize = true,
             Margin   = new Padding(0, 0, 6, 0)
         };
-        btnAutoInstall.Click += OnAutoInstall;
+        btnAutoInstall.Click += (_, _) => DriverInstallFlow.Run(this, RefreshStatusLabels);
 
         pnlButtons.Controls.AddRange(new Control[] { btnClose, btnAutoInstall });
 
@@ -191,100 +190,5 @@ internal sealed class DriverSetupForm : Form
             ForeColor = col,
             Margin    = new Padding(0, 2, 0, 2)
         };
-    }
-
-    private void InstallViaPnp(string driverDir)
-    {
-        try
-        {
-            Cursor  = Cursors.WaitCursor;
-            Enabled = false;
-
-            // Clear any existing staged package first, same as a machine that's never had
-            // NeoSync installed -- this is the exact same clean-slate state a fresh install
-            // starts from, so "Reinstall" gets the same reliability rather than potentially
-            // layering a fresh install on top of a stale/partial one.
-            NeoSyncHelperClient.Send("REMOVE_DRIVERS");
-
-            // Trust the cert and stage the BD01 INF via the NeoSyncHelper service (LocalSystem).
-            string setupResult = NeoSyncHelperClient.Send($"SETUP_DRIVERS {driverDir}");
-            RefreshStatusLabels();
-
-            if (!setupResult.StartsWith("OK"))
-            {
-                MessageBox.Show(this, $"Driver staging failed: {setupResult}",
-                    "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-        }
-        finally
-        {
-            Enabled = true;
-            Cursor  = Cursors.Default;
-        }
-
-        if (new ReplugStatusDialog().ShowDialog(this) == DialogResult.Cancel) return;
-
-        Cursor  = Cursors.WaitCursor;
-        Enabled = false;
-
-        // The mode switch and BD01 wait can take up to 30s -- run off the UI thread so a
-        // slow or not-quite-ready device can't freeze the dialog (previously blocked here).
-        Task.Run(() =>
-        {
-            string msg;
-            try
-            {
-                // Mode switch via service (handles BD04 driver install, control transfers, cleanup).
-                string switchResult = NeoSyncHelperClient.Send("SWITCH");
-
-                if (switchResult != "OK")
-                {
-                    msg = "The driver has been staged but the mode switch failed (device may not be ready).\n\n" +
-                          "Click Connect in the main window - the driver will be applied automatically.";
-                }
-                else
-                {
-                    bool bd01Present = false;
-                    for (int i = 0; i < 150 && !bd01Present; i++)
-                    {
-                        bd01Present = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD01") is not null;
-                        if (!bd01Present) Thread.Sleep(200);
-                    }
-                    msg = bd01Present
-                        ? "Driver setup complete. Click Connect in the main window to start."
-                        : "The switch succeeded but BD01 took too long to enumerate.\n\nClick Connect in the main window.";
-                }
-            }
-            catch (Exception ex)
-            {
-                msg = $"Driver setup step failed: {ex.Message}";
-            }
-
-            Invoke(() =>
-            {
-                Enabled = true;
-                Cursor  = Cursors.Default;
-                // Refresh in place rather than closing -- shows what the driver state actually
-                // ended up as, instead of just trusting the completion message.
-                RefreshStatusLabels();
-                MessageBox.Show(this, msg, "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            });
-        });
-    }
-
-    private void OnAutoInstall(object? sender, EventArgs e)
-    {
-        string driverDir = Path.Combine(AppContext.BaseDirectory, "driver");
-        if (!File.Exists(Path.Combine(driverDir, "neosync_bd01.inf")) ||
-            !File.Exists(Path.Combine(driverDir, "neosync.cer")))
-        {
-            MessageBox.Show(this,
-                $"Driver files missing from:\r\n{driverDir}\r\n\r\nPlease reinstall NeoSync.",
-                "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return;
-        }
-
-        InstallViaPnp(driverDir);
     }
 }
