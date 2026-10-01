@@ -77,8 +77,12 @@ internal static class DriverInstallFlow
 
             if (switchResult != "OK")
             {
+                // The service's message assumes the main app's Connect button, which doesn't
+                // exist in this flow -- strip that guidance and give advice that fits here instead.
                 string reason = switchResult.StartsWith("FAIL:") ? switchResult[5..] : switchResult;
-                dlg.SetStatus($"Mode switch failed: {reason}", Color.Firebrick);
+                int cutAt = reason.IndexOf(" - click Connect again", StringComparison.Ordinal);
+                if (cutAt >= 0) reason = reason[..cutAt];
+                dlg.SetStatus($"Mode switch failed: {reason}.\n\nIf this keeps happening, unplug and replug the Neo, then try Reinstall again.", Color.Firebrick);
                 dlg.SetFinished();
                 return;
             }
