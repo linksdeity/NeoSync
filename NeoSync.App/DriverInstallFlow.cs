@@ -4,10 +4,10 @@ using NeoSync.Core.Usb;
 namespace NeoSync.App;
 
 /// <summary>
-/// The actual "stage drivers, wait for replug, switch modes" sequence, used directly by
-/// Advanced &gt; Reinstall WinUSB drivers and by the installer. Deliberately skips
-/// DriverSetupForm's explanatory shell -- that's reserved for the auto-triggered "drivers
-/// aren't ready yet" case, where showing what's wrong first actually matters.
+/// The actual "stage drivers, wait for the Neo to be plugged in, switch modes" sequence,
+/// used directly by Advanced &gt; Reinstall WinUSB drivers and by the installer. Deliberately
+/// skips DriverSetupForm's explanatory shell -- that's reserved for the auto-triggered
+/// "drivers aren't ready yet" case, where showing what's wrong first actually matters.
 /// </summary>
 internal static class DriverInstallFlow
 {
@@ -26,81 +26,88 @@ internal static class DriverInstallFlow
             return;
         }
 
-        string setupResult;
-        SetBusy(owner, true);
-        try
-        {
-            // Clear any existing staged package first, so Reinstall always starts from the
-            // same clean slate as a machine that's never had NeoSync installed.
-            NeoSyncHelperClient.Send("REMOVE_DRIVERS");
-            setupResult = NeoSyncHelperClient.Send($"SETUP_DRIVERS {driverDir}");
-        }
-        finally
-        {
-            SetBusy(owner, false);
-        }
-        onComplete?.Invoke();
+        var dlg = new DriverProgressDialog();
+        _ = dlg.Handle; // force handle creation now so Invoke works the instant the worker starts
 
-        if (!setupResult.StartsWith("OK"))
-        {
-            MessageBox.Show(owner, $"Driver staging failed: {setupResult}",
-                "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        if (new ReplugStatusDialog().ShowDialog(owner) == DialogResult.Cancel) return;
+        Task.Run(() => RunSequence(dlg, driverDir, owner, onComplete));
 
         SetBusy(owner, true);
-
-        if (owner is null)
-        {
-            // No UI thread to protect here -- block, same as the installer's own blocking Exec.
-            string msg = RunSwitchAndWait();
-            MessageBox.Show(msg, "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            onComplete?.Invoke();
-            return;
-        }
-
-        // The mode switch and BD01 wait can take up to 30s -- run off the UI thread so a
-        // slow or not-quite-ready device can't freeze the app.
-        Task.Run(() =>
-        {
-            string msg = RunSwitchAndWait();
-            owner.Invoke(() =>
-            {
-                SetBusy(owner, false);
-                MessageBox.Show(owner, msg, "NeoSync - Driver Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                onComplete?.Invoke();
-            });
-        });
+        dlg.ShowDialog(owner);
+        SetBusy(owner, false);
     }
 
-    private static string RunSwitchAndWait()
+    private static void RunSequence(DriverProgressDialog dlg, string driverDir, Form? owner, Action? onComplete)
     {
         try
         {
-            // Mode switch via service (handles BD04 driver install, control transfers, cleanup).
-            string switchResult = NeoSyncHelperClient.Send("SWITCH");
-            if (switchResult != "OK")
+            dlg.SetStatus("Staging drivers…", SystemColors.ControlText);
+
+            // Clear any existing staged package first, so Reinstall always starts from the
+            // same clean slate as a machine that's never had NeoSync installed.
+            NeoSyncHelperClient.Send("REMOVE_DRIVERS");
+            string setupResult = NeoSyncHelperClient.Send($"SETUP_DRIVERS {driverDir}");
+            RaiseOnComplete(owner, onComplete);
+
+            if (!setupResult.StartsWith("OK"))
             {
-                return "The driver has been staged but the mode switch failed (device may not be ready).\n\n" +
-                       "Click Connect in the main window - the driver will be applied automatically.";
+                dlg.SetStatus($"Driver staging failed: {setupResult}", Color.Firebrick);
+                dlg.SetFinished();
+                return;
             }
 
-            bool bd01Present = false;
-            for (int i = 0; i < 150 && !bd01Present; i++)
+            // BD04's actual driver doesn't matter here -- the mode switch below force-fixes
+            // whatever driver it has as part of doing the switch itself. All that's needed
+            // first is for the device to be physically present at all.
+            if (!IsBd04Present())
             {
-                bd01Present = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD01") is not null;
-                if (!bd01Present) Thread.Sleep(200);
+                dlg.SetStatus("Plug in the Neo to continue…", Color.DarkOrange);
+                while (!IsBd04Present())
+                {
+                    if (dlg.Cancelled) { dlg.CloseSafe(); return; }
+                    Thread.Sleep(300);
+                }
             }
-            return bd01Present
-                ? "Driver setup complete. Click Connect in the main window to start."
-                : "The switch succeeded but BD01 took too long to enumerate.\n\nClick Connect in the main window.";
+
+            if (dlg.Cancelled) { dlg.CloseSafe(); return; }
+            dlg.SetStatus("Switching to transfer mode… (can take up to 30 seconds)", SystemColors.ControlText);
+
+            // Handles BD04's driver, the mode-switch control transfers, BD01's driver, and
+            // waiting for BD01 to enumerate -- all inside this one service call.
+            string switchResult = NeoSyncHelperClient.Send("SWITCH");
+
+            if (switchResult != "OK")
+            {
+                string reason = switchResult.StartsWith("FAIL:") ? switchResult[5..] : switchResult;
+                dlg.SetStatus($"Mode switch failed: {reason}", Color.Firebrick);
+                dlg.SetFinished();
+                return;
+            }
+
+            dlg.SetStatus("Driver setup complete! Ready to use.", Color.DarkGreen);
+            dlg.SetFinished();
+            Thread.Sleep(1200); // let the success message actually be seen before moving on
+            dlg.CloseSafe();
         }
         catch (Exception ex)
         {
-            return $"Driver setup step failed: {ex.Message}";
+            dlg.SetStatus($"Driver setup step failed: {ex.Message}", Color.Firebrick);
+            dlg.SetFinished();
         }
+        finally
+        {
+            RaiseOnComplete(owner, onComplete);
+        }
+    }
+
+    private static bool IsBd04Present()
+        => NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD04") is { } id
+        && NeoUsbDiag.GetDevicePresence(id).Present;
+
+    private static void RaiseOnComplete(Form? owner, Action? onComplete)
+    {
+        if (onComplete is null) return;
+        if (owner is not null) owner.Invoke(onComplete);
+        else onComplete();
     }
 
     private static void SetBusy(Form? owner, bool busy)
@@ -110,3 +117,4 @@ internal static class DriverInstallFlow
         owner.Enabled = !busy;
     }
 }
+
