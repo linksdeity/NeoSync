@@ -219,13 +219,7 @@ internal sealed class DriverSetupForm : Form
                 return;
             }
 
-            if (MessageBox.Show(this,
-                    "If the Neo is already plugged in, unplug it now.\n" +
-                    "Then plug it in and wait for the USB connect sound (or the keyboard light).\n" +
-                    "Click OK once Windows has recognised it as a keyboard.\n\n" +
-                    "Click Cancel to skip (the driver is staged and will apply when NeoSync connects).",
-                    "NeoSync - Driver Setup", MessageBoxButtons.OKCancel, MessageBoxIcon.Information)
-                == DialogResult.Cancel) return;
+            if (new ReplugStatusDialog().ShowDialog(this) == DialogResult.Cancel) return;
 
             Cursor  = Cursors.WaitCursor;
             Enabled = false;
