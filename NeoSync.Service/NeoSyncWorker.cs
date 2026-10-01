@@ -237,6 +237,19 @@ internal sealed class NeoSyncWorker : BackgroundService
                 _logger.LogWarning("SWITCH: WaitForWinUsb={ready}", winUsbReady);
                 if (!winUsbReady)
                 {
+                    // pnputil itself already reported the install succeeded above (bd04Oem
+                    // was non-null) - a timeout here usually just means our own registry
+                    // read caught the device mid-re-enumeration (same stale/not-present
+                    // class of issue fixed elsewhere), not a real failure. Confirmed by
+                    // testing: closing this error and clicking Connect moments later
+                    // (no restart, just more elapsed time) reliably works. Give it one
+                    // more full wait before restarting anything - a restart here could
+                    // interrupt an install that actually already succeeded.
+                    _logger.LogWarning("SWITCH: WinUSB not detected yet - waiting longer before restarting anything");
+                    winUsbReady = Bd04WinUsbCycle.WaitForWinUsb(30_000);
+                }
+                if (!winUsbReady)
+                {
                     // Do NOT uninstall here: repeated install/uninstall cycles have been observed
                     // to progressively wedge this device's Windows PnP state until only a reboot
                     // fixes it. Leave the driver staged; a restart-and-retry (below) or a physical
