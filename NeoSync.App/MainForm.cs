@@ -931,17 +931,12 @@ internal sealed partial class MainForm : Form
                 // AlphaWord-only: other applets' files aren't plain text, so a text preview
                 // wouldn't be meaningful. Every file still gets a child node (blank if no
                 // preview) so empty and non-empty files take up the same vertical space.
-                (string? preview, string? previewFull) = isAlphaWord && hasContent
-                    ? GetFilePreview(applet, i)
-                    : (null, null);
+                string? preview = isAlphaWord && hasContent ? GetFilePreview(applet, i) : null;
                 var previewNode = new TreeNode(preview ?? string.Empty)
                 {
                     Tag         = (applet, i), // clicking the preview line selects its file too
                     ForeColor   = SystemColors.GrayText,
-                    NodeFont    = new Font(treeFiles.Font, FontStyle.Italic),
-                    // Node text gets clipped at narrower window widths -- the tooltip always
-                    // shows the full preview regardless of available space.
-                    ToolTipText = previewFull ?? string.Empty
+                    NodeFont    = new Font(treeFiles.Font, FontStyle.Italic)
                 };
                 fileNode.Nodes.Add(previewNode);
                 fileNode.Expand();
@@ -966,30 +961,26 @@ internal sealed partial class MainForm : Form
         => bytes < 1024 ? $"{bytes} B" : $"{bytes / 1024.0:0.#} KB";
 
     /// <summary>Reads a file's content and returns a short first-words preview for the tree
-    /// label plus a longer preview for the hover tooltip (window width can clip the label).
-    /// Returns (null, null) if the file couldn't be read.</summary>
-    private (string? Short, string? Full) GetFilePreview(NeoApplet applet, int fileIndex, int maxWords = 8, int maxTooltipChars = 400)
+    /// label. Returns null if the file couldn't be read.</summary>
+    private string? GetFilePreview(NeoApplet applet, int fileIndex, int maxWords = 8)
     {
         byte[]? data = _device?.ReadFile(applet, fileIndex);
-        if (data is null || data.Length == 0) return (null, null);
+        if (data is null || data.Length == 0) return null;
 
         try
         {
             string text = ConvertAlphaWordBytes(data);
             string[] words = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length == 0) return (null, null);
+            if (words.Length == 0) return null;
 
             string shortPreview = string.Join(' ', words.Take(maxWords));
             if (words.Length > maxWords) shortPreview += " …";
 
-            string fullPreview = string.Join(' ', words);
-            if (fullPreview.Length > maxTooltipChars) fullPreview = fullPreview[..maxTooltipChars] + " …";
-
-            return (shortPreview, fullPreview);
+            return shortPreview;
         }
         catch
         {
-            return (null, null);
+            return null;
         }
         finally
         {
