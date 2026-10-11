@@ -169,22 +169,31 @@ internal sealed class DriverSetupForm : Form
     }
 
     /// <summary>Builds a status label for a BD04/BD01 driver kind -- shared with
-    /// DriverProgressDialog so both show identical driver-state wording.</summary>
+    /// DriverProgressDialog and RepairNeoSyncForm so all three show identical wording.</summary>
     internal static Label MakeStatusLabel(string name, NeoDriverKind kind)
     {
-        bool ok   = kind == NeoDriverKind.WinUsb || kind == NeoDriverKind.WindowsHid;
-        string icon = ok ? "✓" : "✗";
-        Color  col  = ok ? Color.DarkGreen : Color.Firebrick;
-        string desc = kind switch
+        string icon, desc;
+        Color col;
+        switch (kind)
         {
-            NeoDriverKind.WinUsb             => "WinUSB - ready",
-            NeoDriverKind.DriverError        => "WinUSB failed to start - reinstall needed",
-            NeoDriverKind.NotSeen            => "not seen - needs setup",
-            NeoDriverKind.WindowsHid         => "Windows HID keyboard - ready",
-            NeoDriverKind.RenaissanceLearning => "AlphaSmart Manager driver - needs replacing",
-            NeoDriverKind.Other              => "driver removed or unsupported - needs WinUSB",
-            _                                => $"{kind} - needs WinUSB"
-        };
+            case NeoDriverKind.WinUsb:
+                icon = "\u2713"; col = Color.DarkGreen; desc = "WinUSB - ready"; break;
+            case NeoDriverKind.WindowsHid:
+                // Fine as a keyboard right now, but Connect still has to force-install WinUSB
+                // the first time -- not broken, just not as ready as WinUsb is.
+                icon = "\u26A0"; col = Color.DarkOrange;
+                desc = "Windows HID keyboard - WinUSB install needed on first Connect"; break;
+            case NeoDriverKind.DriverError:
+                icon = "\u2717"; col = Color.Firebrick; desc = "WinUSB failed to start - reinstall needed"; break;
+            case NeoDriverKind.NotSeen:
+                icon = "\u2717"; col = Color.Firebrick; desc = "not seen - needs setup"; break;
+            case NeoDriverKind.RenaissanceLearning:
+                icon = "\u2717"; col = Color.Firebrick; desc = "AlphaSmart Manager driver - needs replacing"; break;
+            case NeoDriverKind.Other:
+                icon = "\u2717"; col = Color.Firebrick; desc = "driver removed or unsupported - needs WinUSB"; break;
+            default:
+                icon = "\u2717"; col = Color.Firebrick; desc = $"{kind} - needs WinUSB"; break;
+        }
         return new Label
         {
             Text      = $"  {icon}  {name}: {desc}",
