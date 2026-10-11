@@ -29,6 +29,13 @@ static class Program
                 DriverInstallFlow.Run(null);
                 return;
             }
+            // Launched elevated (via Verb="runas") by Advanced > Repair NeoSyncHelper Service -
+            // the main app never runs elevated itself, so the actual sc.exe work happens here.
+            if (args[0].Equals("--repair-service", StringComparison.OrdinalIgnoreCase))
+            {
+                Environment.Exit(ServiceRepair.RunElevated() ? 0 : 1);
+                return;
+            }
         }
 
         ApplicationConfiguration.Initialize();

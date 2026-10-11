@@ -83,6 +83,7 @@ partial class MainForm
         menuAdvanced.Items.Add(new ToolStripSeparator());
         menuAdvanced.Items.Add("Reinstall WinUSB drivers…", null, (_, _) => DriverInstallFlow.Run(this));
         menuAdvanced.Items.Add("Remove WinUSB drivers\u2026",    null, (_, _) => RemoveDrivers());
+        menuAdvanced.Items.Add("Repair NeoSyncHelper service\u2026", null, (_, _) => ServiceRepair.Run(this));
         menuAdvanced.Items.Add(new ToolStripSeparator());
         mnuCopyDiagnostics = new ToolStripMenuItem("Copy Diagnostics…");
         mnuCopyDiagnostics.Click += (_, _) => CopyDiagnostics();
