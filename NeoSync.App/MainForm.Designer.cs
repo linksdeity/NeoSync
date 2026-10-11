@@ -86,9 +86,7 @@ partial class MainForm
         mnuShowSystem.CheckedChanged += (_, _) => { if (_applets.Count > 0) PopulateTree(_applets); };
         menuAdvanced.Items.Add(mnuShowSystem);
         menuAdvanced.Items.Add(new ToolStripSeparator());
-        menuAdvanced.Items.Add("Reinstall WinUSB drivers…", null, (_, _) => DriverInstallFlow.Run(this));
-        menuAdvanced.Items.Add("Remove WinUSB drivers\u2026",    null, (_, _) => RemoveDrivers());
-        menuAdvanced.Items.Add("Repair NeoSyncHelper service\u2026", null, (_, _) => ServiceRepair.Run(this));
+        menuAdvanced.Items.Add("Repair NeoSync\u2026", null, (_, _) => new RepairNeoSyncForm().ShowDialog(this));
         menuAdvanced.Items.Add(new ToolStripSeparator());
         mnuCopyDiagnostics = new ToolStripMenuItem("Copy Diagnostics…");
         mnuCopyDiagnostics.Click += (_, _) => CopyDiagnostics();

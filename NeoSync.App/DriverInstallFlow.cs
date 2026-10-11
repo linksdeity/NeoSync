@@ -1,15 +1,16 @@
 using NeoSync.Core.Ipc;
+using NeoSync.Core.Usb;
 
 namespace NeoSync.App;
 
 /// <summary>
 /// Stages the WinUSB driver package (BD01's INF + the signing cert), used directly by
-/// Advanced &gt; Reinstall WinUSB drivers and by the installer. Deliberately stops there --
-/// the actual mode switch (BD04's WinUSB install, the switch bytes, waiting for BD01) is
-/// left entirely to the main app's own Connect button, which already does it reliably on
-/// its own; trying to also do it here only added fragile timing-dependent steps for no
-/// real benefit. Also skips DriverSetupForm's explanatory shell -- that's reserved for the
-/// auto-triggered "drivers aren't ready yet" case, where showing what's wrong first matters.
+/// Advanced &gt; Repair NeoSync &gt; Reinstall WinUSB drivers and by the installer. Deliberately
+/// stops there -- the actual mode switch (BD04's WinUSB install, the switch bytes, waiting
+/// for BD01) is left entirely to the main app's own Connect button, which already does it
+/// reliably on its own; trying to also do it here only added fragile timing-dependent steps
+/// for no real benefit. Also skips DriverSetupForm's explanatory shell -- that's reserved for
+/// the auto-triggered "drivers aren't ready yet" case, where showing what's wrong first matters.
 /// </summary>
 internal static class DriverInstallFlow
 {
@@ -44,9 +45,10 @@ internal static class DriverInstallFlow
         {
             dlg.SetStatus("Staging drivers…", SystemColors.ControlText);
 
-            // Clear any existing staged package first, so Reinstall always starts from the
-            // same clean slate as a machine that's never had NeoSync installed.
-            NeoSyncHelperClient.Send("REMOVE_DRIVERS");
+            // SETUP_DRIVERS already removes any stale staged copy of each INF itself before
+            // re-adding it -- a separate REMOVE_DRIVERS call here used to also force-remove
+            // the live device node (/remove-device), which yanked an already-connected,
+            // perfectly fine Neo out of the PnP tree for no reason. Just stage directly.
             string setupResult = NeoSyncHelperClient.Send($"SETUP_DRIVERS {driverDir}");
             dlg.RefreshDriverStatus();
 
@@ -57,10 +59,16 @@ internal static class DriverInstallFlow
                 return;
             }
 
-            dlg.SetStatus("Drivers staged! Plug in the Neo and click Connect in the main window.", Color.DarkGreen);
+            // BD04 deliberately stays in whatever mode it's already in (keyboard, most likely)
+            // -- staging alone never touches it. Only mention plugging in if it genuinely
+            // isn't connected right now, instead of always assuming it's unplugged.
+            string? bd04Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD04");
+            bool bd04Connected = bd04Id != null && NeoUsbDiag.GetDevicePresence(bd04Id).Present;
+            string nextStep = bd04Connected
+                ? "Drivers staged. Click Connect in the main window to finish setup."
+                : "Drivers staged. Plug in the Neo, then click Connect in the main window to finish setup.";
+            dlg.SetStatus(nextStep, Color.DarkGreen);
             dlg.SetFinished();
-            Thread.Sleep(1200); // let the message actually be seen before moving on
-            dlg.CloseSafe();
         }
         catch (Exception ex)
         {
