@@ -20,6 +20,7 @@ partial class MainForm
     private ToolStripMenuItem     mnuQuickSyncFolder = null!;
     private StatusStrip          statusStrip   = null!;
     private ToolStripStatusLabel lblStatus     = null!;
+    private ToolStripProgressBar progStatus    = null!;
     private Panel                pnlUsageBar   = null!;
     private FlowLayoutPanel      pnlButtons    = null!;
     private TableLayoutPanel     tableLayout   = null!;
@@ -50,6 +51,10 @@ partial class MainForm
         statusStrip = new StatusStrip { Dock = DockStyle.Bottom };
         lblStatus   = new ToolStripStatusLabel("Not connected.") { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
         statusStrip.Items.Add(lblStatus);
+        // Marquee (indeterminate) rather than a countdown -- actual USB/driver timing isn't
+        // predictable enough to promise a number, so this just shows "something is happening".
+        progStatus = new ToolStripProgressBar { Style = ProgressBarStyle.Marquee, MarqueeAnimationSpeed = 30, Visible = false };
+        statusStrip.Items.Add(progStatus);
 
         pnlUsageBar = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0), Visible = false };
         pnlUsageBar.Paint += pnlUsageBar_Paint;

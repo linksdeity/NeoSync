@@ -91,7 +91,7 @@ internal sealed class DriverSetupForm : Form
 
         var btnAutoInstall = new Button
         {
-            Text     = "Install drivers automatically (~20s)",
+            Text     = "Install drivers automatically",
             AutoSize = true,
             Margin   = new Padding(0, 0, 6, 0)
         };

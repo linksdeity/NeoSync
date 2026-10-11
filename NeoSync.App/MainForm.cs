@@ -99,7 +99,7 @@ internal sealed partial class MainForm : Form
             btnQuickSync.PrimaryEnabled = false;
             btnConnect.Text      = "Connect";
             HideUsageBar();
-            SetStatus("Disconnecting\u2026");
+            SetStatus("Disconnecting\u2026", busy: true);
 
             // BD04 sometimes lands in a transient failed-start state when the Neo
             // reboots back into keyboard mode - same issue as on Connect, fixed the
@@ -112,7 +112,7 @@ internal sealed partial class MainForm : Form
         }
 
         // Disconnected → start connecting
-        SetStatus("Connecting\u2026");
+        SetStatus("Connecting\u2026", busy: true);
         btnConnect.Enabled   = false;
         btnDownload.Enabled  = false;
         btnUpload.Enabled    = false;
@@ -406,7 +406,7 @@ internal sealed partial class MainForm : Form
         // subsequent SWITCH call finds BD04 already ready and skips straight to sending bytes.
         if (driverState.Hid != NeoDriverKind.WinUsb)
         {
-            Invoke(() => SetStatus("Installing WinUSB driver on the Neo\u2026 (one-time, can take several seconds)"));
+            Invoke(() => SetStatus("Installing WinUSB driver on the Neo\u2026", busy: true));
             Task<bool> bd04ArrivalTask = _deviceWatcher.WaitForArrivalAsync("vid_081e&pid_bd04", 15_000);
             string installResult = NeoSyncHelperClient.Send("INSTALL_BD04");
             DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Service INSTALL_BD04 \u2192 {installResult}\n");
@@ -424,7 +424,7 @@ internal sealed partial class MainForm : Form
         Task<bool> bd01ArrivalTask = _deviceWatcher.WaitForArrivalAsync("vid_081e&pid_bd01", 30_000);
 
         // Step 1: mode switch via NeoSyncHelper service (LocalSystem; handles all driver ops).
-        Invoke(() => SetStatus("Switching to transfer mode\u2026 (can take up to 30s, this is normal)"));
+        Invoke(() => SetStatus("Switching to transfer mode\u2026", busy: true));
         string switchResult = NeoSyncHelperClient.Send("SWITCH");
         bool switched = switchResult == "OK";
         string switchDiag = switchResult.StartsWith("FAIL:") ? switchResult[5..] : switchResult;
@@ -490,8 +490,7 @@ internal sealed partial class MainForm : Form
 
                 if (earlyTransport is not null) break;
 
-                int remaining = (maxWaitMs - elapsed) / 1000;
-                Invoke(() => SetStatus($"Waiting for comms device… ({remaining}s)"));
+                Invoke(() => SetStatus("Waiting for comms device\u2026", busy: true));
                 Thread.Sleep(pollMs);
                 elapsed += pollMs;
             }
@@ -500,7 +499,7 @@ internal sealed partial class MainForm : Form
             {
                 DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] TryOpen=True (after switch, {elapsed}ms)\n");
                 _device = new NeoDevice(earlyTransport);
-                Invoke(() => SetStatus("Enumerating files…"));
+                Invoke(() => SetStatus("Enumerating files\u2026", busy: true));
                 _applets = _device.EnumerateApplets();
                 uint earlyAvailRam = _device.GetAvailableRam();
                 Invoke(() => PopulateTree(_applets, earlyAvailRam));
@@ -540,8 +539,7 @@ internal sealed partial class MainForm : Form
         {
             transport = NeoUsbTransport.TryOpen(out tryOpenDiag);
             if (transport is not null) break;
-            int remaining = (step2MaxMs - step2Elapsed) / 1000;
-            Invoke(() => SetStatus($"Opening device… ({remaining}s)"));
+            Invoke(() => SetStatus("Opening device\u2026", busy: true));
             Thread.Sleep(step2PollMs);
             step2Elapsed += step2PollMs;
         }
@@ -561,7 +559,7 @@ internal sealed partial class MainForm : Form
         _device = new NeoDevice(transport);
 
         // Step 3: enumerate applets
-        Invoke(() => SetStatus("Enumerating files…"));
+        Invoke(() => SetStatus("Enumerating files\u2026", busy: true));
         _applets = _device.EnumerateApplets();
         uint availRam = _device.GetAvailableRam();
 
@@ -999,10 +997,11 @@ internal sealed partial class MainForm : Form
         }
     }
 
-    private void SetStatus(string text)
+    private void SetStatus(string text, bool busy = false)
     {
         lblStatus.Text = text;
         lblStatus.ToolTipText = text; // full message on hover in case it's too long to fit
+        progStatus.Visible = busy;
     }
 
     private void UpdateUsageBar(uint usedBytes, uint freeBytes)
