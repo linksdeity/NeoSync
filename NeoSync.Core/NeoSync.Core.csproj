@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>0.9.3</Version>
+    <Version>0.9.4</Version>
   </PropertyGroup>
 
 </Project>
