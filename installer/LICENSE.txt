@@ -15,9 +15,9 @@ there is inherent risk.
 
 IMPORTANT: once NeoSync's driver is installed, the AlphaSmart Neo will no
 longer function as a standalone USB keyboard on this computer (its "send
-text" feature) until the driver is removed again (Advanced > Remove WinUSB
-drivers in NeoSync). This is a deliberate tradeoff required to communicate
-with the device for file transfer.
+text" feature) until the driver is removed again (Advanced > Repair NeoSync
+> Remove WinUSB drivers in NeoSync). This is a deliberate tradeoff required
+to communicate with the device for file transfer.
 
 THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

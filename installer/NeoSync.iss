@@ -71,9 +71,9 @@ var
 begin
   AppDir := ExpandConstant('{app}');
 
-  // Delegates entirely to the app's own driver setup dialog (Advanced > Reinstall WinUSB
-  // drivers) -- staging, the live replug status, and the mode switch are all handled there,
-  // so the installer doesn't need its own separate copy of that flow.
+  // Delegates entirely to the app's own driver setup dialog (Advanced > Repair NeoSync >
+  // Reinstall WinUSB drivers) -- staging, the live replug status, and the mode switch are all
+  // handled there, so the installer doesn't need its own separate copy of that flow.
   Exec(AppDir + '\NeoSync.App.exe', '--driver-setup', AppDir, SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode);
 end;
 

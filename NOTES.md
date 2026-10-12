@@ -21,6 +21,7 @@ here) and cross-checked against [neotools](https://github.com/rbanffy/neotools)
 | Mode switch BD04 -> BD01 (auto, self-healing) | Working |
 | Driver install/remove via signed package + pnputil | Working (installer + in-app) |
 | Distribution: single signed Inno Setup installer | Working |
+| Classic Windows color theme picker (Advanced menu) | Working |
 
 ---
 
@@ -200,8 +201,20 @@ NeoSync.slnx
 `-- NeoSync.App/                (.NET 8 WinForms)
     |-- MainForm.cs              Connect/Disconnect/Download/Upload/Quick Sync/filter logic
     |-- MainForm.Designer.cs     TableLayoutPanel layout, AutoSize buttons
+    |-- RepairNeoSyncForm.cs     Advanced > Repair NeoSync - driver/service status + actions
+    |-- DriverInstallFlow.cs     Shared reinstall flow (Repair NeoSync button + installer --driver-setup)
     |-- DriverSetupForm.cs       Shown when a driver isn't ready; stages + switches
-    `-- QuickSyncSettings.cs     Persists the Quick Sync destination folder
+    |-- DriverProgressDialog.cs  Progress UI shown during driver install/reinstall
+    |-- ServiceRepair.cs         Elevated NeoSyncHelper service reinstall (Advanced menu)
+    |-- DeviceArrivalWatcher.cs  Non-blocking wait for a USB device interface to appear
+    |-- QuickSyncSettings.cs     Persists the Quick Sync destination folder
+    |-- UpdateChecker.cs         Checks GitHub Releases for a newer version
+    |-- AppTheme.cs              Classic Windows color scheme definitions
+    |-- ThemeManager.cs          Applies an AppTheme to the form/controls/Advanced menu
+    |-- ThemeSettings.cs         Persists the selected theme
+    |-- ThemeSwatchPanel.cs      Theme swatch picker shown in the Advanced menu
+    |-- ThemedMarqueeStatusItem.cs  Owner-drawn status bar busy indicator
+    `-- SlideToggleButton.cs     Quick Sync / Open Folder two-action button
 ```
 
 ---
@@ -237,7 +250,7 @@ preserved while NeoSync's driver is active (see the explanation embedded in
 ### Remove (`NeoDriverInstaller.RemoveBoth` / `RemoveAllMatchingInfs`)
 Scans all `C:\Windows\INF\oem*.inf` files for VID_081E&PID_BD04 / VID_081E&PID_BD01
 content and deletes every match via `pnputil /delete-driver <inf> /uninstall /force`.
-Used by both "Advanced > Remove WinUSB drivers" in the app and by the uninstaller
+Used by both "Advanced > Repair NeoSync > Remove WinUSB drivers" in the app and by the uninstaller
 (`CurUninstallStepChanged` in `NeoSync.iss`) -- removing the driver restores the Neo
 to Windows' inbox keyboard driver on next replug.
 
@@ -251,10 +264,12 @@ to Windows' inbox keyboard driver on next replug.
 - **Features not yet implemented**: rename files on device, create new file slots,
   backup all applets (not just AlphaWord -- Quick Sync currently covers AlphaWord
   only), auto-launch on device connect, drag-and-drop upload/download.
-- **Diagnostic logs are always-on** (`%TEMP%\neosync_diag.txt`,
-  `%ProgramData%\NeoSync\neosync-debug.log`) -- useful for client support, but not
-  currently gated behind an opt-in setting. They log command codes/timing/registry
-  state only, never file content.
+- **Diagnostic logging is opt-in**, toggled via Advanced > Enable diagnostic
+  logging (also offered as an installer task, checked by default) and backed by
+  `DiagnosticsSettings` (`%ProgramData%\NeoSync\diagnostics.flag`), honored by
+  both the app and the service. Logs (`%TEMP%\neosync_diag.txt`,
+  `%ProgramData%\NeoSync\neosync-debug.log`) record command codes, timing, and
+  registry state only, never file content.
 - **Untested**: original AlphaSmart Neo (Neo 1) hardware -- everything so far has
   only been exercised against a Neo 2. See git history / chat log for the reasoning
   on why it's expected to work (shared VID/PID and protocol across the product line

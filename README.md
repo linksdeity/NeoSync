@@ -18,6 +18,8 @@ endorsed by Renaissance Learning or AlphaSmart.
   your PC, backing up whatever was already there first.
 - Installs its own WinUSB driver for the device, since Windows blocks direct
   USB access to a device that is enumerated as a keyboard.
+- Optional classic Windows 2000-style color themes, picked from swatches in
+  the Advanced menu.
 
 ## Requirements
 
@@ -63,15 +65,17 @@ Once running, the installer will:
 
 After that, the Neo will no longer work as a plain USB keyboard on that PC,
 since NeoSync's driver replaces the keyboard driver in order to talk to the
-device directly. This can be undone from Advanced > Remove WinUSB Drivers in
-the app, followed by unplugging and replugging the Neo.
+device directly. This can be undone from Advanced > Repair NeoSync > Remove
+WinUSB drivers in the app, followed by unplugging and replugging the Neo.
 
 ## Using it
 
 Open NeoSync, plug in the Neo, and click Connect. Once connected, select a
 file in the tree and click Download or Upload, or use Quick Sync to pull
-everything at once. Advanced options (driver reinstall/removal, diagnostic
-logging, checking for updates) are under the Advanced menu.
+everything at once. Advanced options -- repairing or removing drivers,
+diagnostic logging, checking for updates, and color themes -- are under the
+Advanced menu. Driver and service troubleshooting is consolidated under
+Advanced > Repair NeoSync.
 
 ## Building from source
 
@@ -85,7 +89,7 @@ To build the full installer (publishes the app and the background service,
 then compiles the Inno Setup script):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Version "0.9.0"
+powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Version "0.9.4"
 ```
 
 This requires a pre-signed WinUSB driver package in `installer\driver\`. See

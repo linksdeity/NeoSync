@@ -20,17 +20,19 @@ static class Program
                 Environment.Exit(result == "OK" ? 0 : 1);
                 return;
             }
-            // Runs the same direct install flow used by Advanced > Reinstall WinUSB drivers in
-            // the running app -- the installer launches this instead of re-implementing the
-            // staging/replug/mode-switch steps itself, so there's only one real implementation.
+            // Runs the same direct install flow used by Advanced > Repair NeoSync > Reinstall
+            // WinUSB drivers in the running app -- the installer launches this instead of
+            // re-implementing the staging/replug/mode-switch steps itself, so there's only one
+            // real implementation.
             if (args[0].Equals("--driver-setup", StringComparison.OrdinalIgnoreCase))
             {
                 ApplicationConfiguration.Initialize();
                 DriverInstallFlow.Run(null);
                 return;
             }
-            // Launched elevated (via Verb="runas") by Advanced > Repair NeoSyncHelper Service -
-            // the main app never runs elevated itself, so the actual sc.exe work happens here.
+            // Launched elevated (via Verb="runas") by Advanced > Repair NeoSync > Repair
+            // NeoSyncHelper service - the main app never runs elevated itself, so the actual
+            // sc.exe work happens here.
             if (args[0].Equals("--repair-service", StringComparison.OrdinalIgnoreCase))
             {
                 Environment.Exit(ServiceRepair.RunElevated() ? 0 : 1);
