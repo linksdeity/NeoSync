@@ -20,7 +20,8 @@ partial class MainForm
     private ToolStripMenuItem     mnuQuickSyncFolder = null!;
     private StatusStrip          statusStrip   = null!;
     private ToolStripStatusLabel lblStatus     = null!;
-    private ToolStripProgressBar progStatus    = null!;
+    private ThemedMarqueeStatusItem progStatus    = null!;
+    private ThemeSwatchPanel     themeSwatches = null!;
     private Panel                pnlUsageBar   = null!;
     private FlowLayoutPanel      pnlButtons    = null!;
     private TableLayoutPanel     tableLayout   = null!;
@@ -49,11 +50,18 @@ partial class MainForm
         Font          = new Font("Segoe UI", 9f);
 
         statusStrip = new StatusStrip { Dock = DockStyle.Bottom };
+        // Pin both explicitly rather than just never touching them - StatusStrip renders its
+        // background using its own BackColor even under ToolStripSystemRenderer (it never had
+        // real native-theme support), so an unset/inherited BackColor can end up reflecting the
+        // Form's color instead of staying neutral. This guarantees native-looking chrome
+        // regardless of any theme logic or ambient renderer/color state, now or later.
+        statusStrip.Renderer  = new ToolStripSystemRenderer();
+        statusStrip.BackColor = SystemColors.Control;
         lblStatus   = new ToolStripStatusLabel("Not connected.") { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
         statusStrip.Items.Add(lblStatus);
         // Marquee (indeterminate) rather than a countdown -- actual USB/driver timing isn't
         // predictable enough to promise a number, so this just shows "something is happening".
-        progStatus = new ToolStripProgressBar { Style = ProgressBarStyle.Marquee, MarqueeAnimationSpeed = 30, Visible = false };
+        progStatus = new ThemedMarqueeStatusItem { Visible = false };
         statusStrip.Items.Add(progStatus);
 
         pnlUsageBar = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0), Visible = false };
@@ -104,6 +112,15 @@ partial class MainForm
         menuAdvanced.Items.Add($"About NeoSync (v{UpdateChecker.CurrentVersion})", null,
             (_, _) => MessageBox.Show(this, $"NeoSync v{UpdateChecker.CurrentVersion}",
                 "NeoSync - About", MessageBoxButtons.OK, MessageBoxIcon.Information));
+        menuAdvanced.Items.Add(new ToolStripSeparator());
+        menuAdvanced.Items.Add(new ToolStripLabel("Themes") { ForeColor = SystemColors.GrayText });
+        themeSwatches = new ThemeSwatchPanel();
+        themeSwatches.ThemePicked += (theme) =>
+        {
+            ThemeSettings.SetTheme(theme);
+            ApplyTheme(theme);
+        };
+        menuAdvanced.Items.Add(new ToolStripControlHost(themeSwatches) { AutoSize = true, Margin = new Padding(0) });
         pnlButtons = new FlowLayoutPanel
         {
             Dock          = DockStyle.Fill,

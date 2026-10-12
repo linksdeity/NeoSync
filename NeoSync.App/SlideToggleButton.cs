@@ -27,6 +27,7 @@ internal sealed class SlideToggleButton : Control
     private bool _hoverArrow;
     private bool _pressed;
     private readonly System.Windows.Forms.Timer _animTimer;
+    private AppTheme _theme = AppTheme.Default;
 
     private int TextAreaWidth => Math.Max(0, Width - ArrowZoneWidth);
 
@@ -38,6 +39,15 @@ internal sealed class SlideToggleButton : Control
             | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         _animTimer = new System.Windows.Forms.Timer { Interval = 12 };
         _animTimer.Tick += AnimTimer_Tick;
+    }
+
+    /// <summary>Recolors the control for the given theme - native ButtonRenderer chrome can't
+    /// take arbitrary colors, so a themed instance switches to flat, manually-painted chrome
+    /// instead. Pass AppTheme.Default to go back to native rendering.</summary>
+    public void ApplyTheme(AppTheme theme)
+    {
+        _theme = theme;
+        Invalidate();
     }
 
     /// <summary>Sizes the control to comfortably fit the wider of the two labels plus the
@@ -125,11 +135,27 @@ internal sealed class SlideToggleButton : Control
         Graphics g = e.Graphics;
         Rectangle rect = ClientRectangle;
 
-        var state = !Enabled ? PushButtonState.Disabled
-            : _pressed ? PushButtonState.Pressed
-            : _hover   ? PushButtonState.Hot
-            : PushButtonState.Normal;
-        ButtonRenderer.DrawButton(g, rect, state);
+        bool themed = _theme.Face is not null;
+        if (!themed)
+        {
+            var state = !Enabled ? PushButtonState.Disabled
+                : _pressed ? PushButtonState.Pressed
+                : _hover   ? PushButtonState.Hot
+                : PushButtonState.Normal;
+            ButtonRenderer.DrawButton(g, rect, state);
+        }
+        else
+        {
+            Color fill = (_pressed || _hover) ? _theme.Hilight!.Value : _theme.Face!.Value;
+            using var fillBrush = new SolidBrush(fill);
+            g.FillRectangle(fillBrush, rect);
+            using var borderPen = new Pen(_theme.Shadow!.Value);
+            g.DrawRectangle(borderPen, 0, 0, rect.Width - 1, rect.Height - 1);
+        }
+
+        Color textColor     = themed ? _theme.Text!.Value : SystemColors.ControlText;
+        Color disabledColor = SystemColors.GrayText;
+        Color arrowHotColor = themed ? _theme.Shadow!.Value : SystemColors.Highlight;
 
         int textAreaWidth = TextAreaWidth;
         using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
@@ -139,21 +165,22 @@ internal sealed class SlideToggleButton : Control
         {
             g.SetClip(new Rectangle(0, 0, textAreaWidth, rect.Height));
 
-            Brush primaryBrush = (!_showingSecondary && !PrimaryEnabled) ? SystemBrushes.GrayText : SystemBrushes.ControlText;
+            using var primaryBrush   = new SolidBrush((!_showingSecondary && !PrimaryEnabled) ? disabledColor : textColor);
+            using var secondaryBrush = new SolidBrush(textColor);
             float primaryX   = -_slideOffset;
             float secondaryX = textAreaWidth - _slideOffset;
-            g.DrawString(PrimaryText,   Font, primaryBrush,             new RectangleF(primaryX,   0, textAreaWidth, rect.Height), sf);
-            g.DrawString(SecondaryText, Font, SystemBrushes.ControlText, new RectangleF(secondaryX, 0, textAreaWidth, rect.Height), sf);
+            g.DrawString(PrimaryText,   Font, primaryBrush,   new RectangleF(primaryX,   0, textAreaWidth, rect.Height), sf);
+            g.DrawString(SecondaryText, Font, secondaryBrush, new RectangleF(secondaryX, 0, textAreaWidth, rect.Height), sf);
 
             g.Clip = oldClip;
         }
 
         string arrow = _showingSecondary ? "◀" : "▶";
         var arrowRect = new Rectangle(textAreaWidth, 0, ArrowZoneWidth, rect.Height);
-        Brush arrowBrush = _hoverArrow ? SystemBrushes.Highlight : SystemBrushes.ControlText;
+        using var arrowBrush = new SolidBrush(_hoverArrow ? arrowHotColor : textColor);
         g.DrawString(arrow, Font, arrowBrush, arrowRect, sf);
 
-        using var sep = new Pen(SystemColors.ControlDark);
+        using var sep = new Pen(themed ? _theme.Shadow!.Value : SystemColors.ControlDark);
         g.DrawLine(sep, textAreaWidth, 3, textAreaWidth, rect.Height - 3);
     }
 }

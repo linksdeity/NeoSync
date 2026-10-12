@@ -14,7 +14,9 @@ internal sealed partial class MainForm : Form
     private List<NeoApplet> _applets = [];
     private uint _usageUsedBytes;
     private uint _usageFreeBytes;
+    private uint _flashFreeBytes;
     private bool _usageHasData;
+    private AppTheme _currentTheme = AppTheme.Default;
 
     // Created on the UI thread so its hidden message-only window shares the form's message
     // pump - ConnectAsync (a background thread) awaits its Tasks, which is thread-safe.
@@ -23,6 +25,15 @@ internal sealed partial class MainForm : Form
     public MainForm()
     {
         InitializeComponent();
+        ApplyTheme(ThemeSettings.GetTheme());
+    }
+
+    private void ApplyTheme(AppTheme theme)
+    {
+        _currentTheme = theme;
+        ThemeManager.Apply(this, theme, menuAdvanced, btnConnect);
+        themeSwatches.ApplyTheme(theme);
+        pnlUsageBar.Invalidate();
     }
 
     // ── Button handlers ───────────────────────────────────────────────────────
@@ -103,7 +114,7 @@ internal sealed partial class MainForm : Form
         Task.Run(() => DownloadFile(applet, fileIndex, dlg.FileName))
             .ContinueWith(_ => Invoke(() =>
             {
-                btnDownload.Enabled = treeFiles.SelectedNode != null;
+                btnDownload.Enabled = IsAlphaWordFileSelected();
             }));
     }
 
@@ -126,7 +137,7 @@ internal sealed partial class MainForm : Form
         Task.Run(() => UploadFile(applet, fileIndex, dlg.FileName))
             .ContinueWith(_ => Invoke(() =>
             {
-                btnUpload.Enabled = treeFiles.SelectedNode != null;
+                btnUpload.Enabled = IsAlphaWordFileSelected();
             }));
     }
 
@@ -149,7 +160,7 @@ internal sealed partial class MainForm : Form
         Task.Run(() => DeleteFile(applet, fileIndex))
             .ContinueWith(_ => Invoke(() =>
             {
-                btnDelete.Enabled = treeFiles.SelectedNode != null;
+                btnDelete.Enabled = IsAlphaWordFileSelected();
             }));
     }
 
@@ -164,11 +175,17 @@ internal sealed partial class MainForm : Form
 
     private void treeFiles_AfterSelect(object sender, TreeViewEventArgs e)
     {
-        bool fileSelected = e.Node?.Tag is (NeoApplet, int);
+        bool fileSelected = IsAlphaWordFileSelected();
         btnDownload.Enabled = fileSelected;
         btnUpload.Enabled   = fileSelected;
         btnDelete.Enabled   = fileSelected;
     }
+
+    /// <summary>Download/Upload/Delete only ever apply to AlphaWord files -- other applets'
+    /// files can be viewed (via Show all applets) but not acted on, since preview/transfer
+    /// support for non-text applet content isn't built out.</summary>
+    private bool IsAlphaWordFileSelected()
+        => treeFiles.SelectedNode?.Tag is (NeoApplet applet, int) && applet.IsAlphaWord;
 
     private void btnQuickSync_Click(object sender, EventArgs e)
     {
@@ -466,7 +483,8 @@ internal sealed partial class MainForm : Form
                 Invoke(() => SetStatus("Enumerating files\u2026", busy: true));
                 _applets = _device.EnumerateApplets();
                 uint earlyAvailRam = _device.GetAvailableRam();
-                Invoke(() => PopulateTree(_applets, earlyAvailRam));
+                uint earlyAvailRom = _device.GetAvailableRom();
+                Invoke(() => PopulateTree(_applets, earlyAvailRam, earlyAvailRom));
                 return;
             }
 
@@ -526,8 +544,9 @@ internal sealed partial class MainForm : Form
         Invoke(() => SetStatus("Enumerating files\u2026", busy: true));
         _applets = _device.EnumerateApplets();
         uint availRam = _device.GetAvailableRam();
+        uint availRom = _device.GetAvailableRom();
 
-        Invoke(() => PopulateTree(_applets, availRam));
+        Invoke(() => PopulateTree(_applets, availRam, availRom));
     }
 
     // ── File transfer helpers ─────────────────────────────────────────────────
@@ -685,7 +704,8 @@ internal sealed partial class MainForm : Form
             if (ok)
             {
                 uint availRamAfter = _device?.GetAvailableRam() ?? 0;
-                Invoke(() => PopulateTree(_applets, availRamAfter));
+                uint availRomAfter = _device?.GetAvailableRom() ?? 0;
+                Invoke(() => PopulateTree(_applets, availRamAfter, availRomAfter));
             }
         }
         finally
@@ -757,7 +777,8 @@ internal sealed partial class MainForm : Form
             if (ok)
             {
                 uint availRam = _device?.GetAvailableRam() ?? 0;
-                Invoke(() => PopulateTree(_applets, availRam));
+                uint availRom = _device?.GetAvailableRom() ?? 0;
+                Invoke(() => PopulateTree(_applets, availRam, availRom));
             }
         }
         finally
@@ -854,7 +875,7 @@ internal sealed partial class MainForm : Form
 
     // ── UI helpers ────────────────────────────────────────────────────────────
 
-    private void PopulateTree(List<NeoApplet> applets, uint? availRam = null)
+    private void PopulateTree(List<NeoApplet> applets, uint? availRam = null, uint? availRom = null)
     {
         treeFiles.BeginUpdate();
         treeFiles.Nodes.Clear();
@@ -874,6 +895,7 @@ internal sealed partial class MainForm : Form
                 ? applet.FileCount
                 : (_device?.GetAppletFileCount(applet) ?? 0);
 
+            uint appletUsedBytes = 0;
             for (int i = 1; i <= fileCount; i++)
             {
                 NeoFileAttributes? attr = _device?.GetFileAttributes(applet, i);
@@ -882,6 +904,7 @@ internal sealed partial class MainForm : Form
                 // AlphaWord is always enumerated regardless of the show-all-applets toggle,
                 // so this total is a stable measure of the device's user-content usage.
                 if (isAlphaWord && attr is not null) alphaWordUsedBytes += attr.AllocSize;
+                if (attr is not null) appletUsedBytes += attr.AllocSize;
                 if (attr is not null)
                 {
                     // MinSize is a constant minimum block allocation (always 512 in practice),
@@ -906,6 +929,9 @@ internal sealed partial class MainForm : Form
                 fileNode.Expand();
             }
 
+            // Only files actually consume text-storage RAM -- MinSize-only (empty) files
+            // don't, so this reflects real usage, not just "file exists".
+            if (fileCount > 0) appletNode.Text += $"  ({FormatFileSize(appletUsedBytes)})";
             appletNode.Expand();
             treeFiles.Nodes.Add(appletNode);
         }
@@ -918,7 +944,7 @@ internal sealed partial class MainForm : Form
         btnConnect.Enabled   = true;
         btnQuickSync.PrimaryEnabled = true;
         if (availRam.HasValue)
-            UpdateUsageBar(alphaWordUsedBytes, availRam.Value);
+            UpdateUsageBar(alphaWordUsedBytes, availRam.Value, availRom ?? 0);
     }
 
     private static string FormatFileSize(uint bytes)
@@ -959,10 +985,11 @@ internal sealed partial class MainForm : Form
         progStatus.Visible = busy;
     }
 
-    private void UpdateUsageBar(uint usedBytes, uint freeBytes)
+    private void UpdateUsageBar(uint usedBytes, uint freeBytes, uint flashFreeBytes)
     {
         _usageUsedBytes = usedBytes;
         _usageFreeBytes = freeBytes;
+        _flashFreeBytes = flashFreeBytes;
         _usageHasData   = true;
         pnlUsageBar.Visible = true;
         pnlUsageBar.Invalidate();
@@ -978,8 +1005,14 @@ internal sealed partial class MainForm : Form
     {
         Graphics g = e.Graphics;
         Rectangle rect = pnlUsageBar.ClientRectangle;
+        bool themed = _currentTheme.Face is not null;
 
-        using (var bg = new SolidBrush(SystemColors.ControlLight))
+        Color trackColor  = themed ? _currentTheme.Hilight!.Value : SystemColors.ControlLight;
+        Color fillColor   = themed ? _currentTheme.Accent!.Value  : Color.SteelBlue;
+        Color borderColor = themed ? _currentTheme.Shadow!.Value  : SystemColors.ControlDark;
+        Color textColor   = themed ? _currentTheme.Text!.Value    : SystemColors.ControlText;
+
+        using (var bg = new SolidBrush(trackColor))
             g.FillRectangle(bg, rect);
 
         if (_usageHasData)
@@ -987,16 +1020,20 @@ internal sealed partial class MainForm : Form
             uint total = _usageUsedBytes + _usageFreeBytes;
             double fraction = total > 0 ? (double)_usageUsedBytes / total : 0;
             int fillWidth = (int)(rect.Width * fraction);
-            using (var fill = new SolidBrush(Color.SteelBlue))
+            using (var fill = new SolidBrush(fillColor))
                 g.FillRectangle(fill, new Rectangle(0, 0, fillWidth, rect.Height));
 
             int percentUsed = total > 0 ? (int)Math.Round(_usageUsedBytes * 100.0 / total) : 0;
+            // _flashFreeBytes is fetched (GetAvailableRom()) but deliberately not shown here -
+            // there's no way to query its total capacity or what's using it, so a flat
+            // free-byte figure next to a real usage bar was more confusing than useful.
             string text = $"{percentUsed}% used \u2014 {FormatFileSize(_usageFreeBytes)} free of {FormatFileSize(total)}";
             using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(text, pnlUsageBar.Font, SystemBrushes.ControlText, rect, sf);
+            using var textBrush = new SolidBrush(textColor);
+            g.DrawString(text, pnlUsageBar.Font, textBrush, rect, sf);
         }
 
-        using var border = new Pen(SystemColors.ControlDark);
+        using var border = new Pen(borderColor);
         g.DrawRectangle(border, 0, 0, rect.Width - 1, rect.Height - 1);
     }
 }
