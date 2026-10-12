@@ -111,6 +111,26 @@ public sealed class NeoDevice : IDisposable
     }
 
     /// <summary>
+    /// Returns available flash/ROM space on the device in bytes (0 on error). Same
+    /// GET_AVAIL_SPACE response as GetAvailableRam() (the message carries both a flash32
+    /// and a ram16 field - AlphaSync's ASDevice::systemMemory reads both, this codebase
+    /// previously only read the RAM half and silently discarded the flash field).
+    /// </summary>
+    public uint GetAvailableRom()
+    {
+        if (!DialogueStart()) return 0;
+
+        var msg = new NeoMessage(NeoMessageCodes.RequestGetAvailSpace);
+        uint rom = 0;
+        bool ok = Exchange(msg);
+        if (ok && msg.Command == NeoMessageCodes.ResponseGetAvailSpace)
+            rom = msg.Argument(1, 4);
+
+        DialogueEnd(ok);
+        return rom;
+    }
+
+    /// <summary>
     /// Returns the number of files actually used by an applet via GET_USED_SPACE.
     /// The applet header's FileCount field is not always reliable (e.g. AlphaWord
     /// reports 0 there even when files exist).
