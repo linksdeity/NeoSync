@@ -41,6 +41,18 @@ a "Windows protected your PC" warning when you run it. This is expected for
 a small unsigned tool, not a sign that anything is wrong. Click "More info",
 then "Run anyway" to proceed.
 
+If Windows 11's **Smart App Control** is enabled, it may block the installer
+outright with no "run anyway" option at all ("Smart App Control blocked an
+app that may be unsafe"). If you hit this, you'll need to temporarily turn
+it off to install:
+
+1. Open **Windows Security** > **App & browser control** > **Smart App
+   Control settings**, and set it to **Off**.
+2. Run the installer as normal.
+3. Turn Smart App Control back **On** afterward from the same settings page.
+   Recent Windows updates allow it to be re-enabled this way without needing
+   a clean install.
+
 Once running, the installer will:
 
 1. Ask you to accept a short disclaimer (this is unofficial, third-party
