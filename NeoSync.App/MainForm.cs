@@ -301,11 +301,23 @@ internal sealed partial class MainForm : Form
             string? bd04Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD04");
             if (bd04Id is null || !NeoUsbDiag.GetDevicePresence(bd04Id).Present) continue;
 
-            var state = NeoDriverState.Detect();
-            if (state.Hid == NeoDriverKind.DriverError)
+            // CM_PROB_FAILED_START doesn't always show up the instant the device becomes
+            // present - it can appear a moment later as Windows finishes starting the
+            // driver. A single immediate check here was missing that and declaring victory
+            // too early (confirmed via a real repro: Repair NeoSync showed BD04 failed to
+            // start right after a Disconnect that had already reported "Disconnected."
+            // fine). Give it a short settle window instead of trusting the first snapshot.
+            NeoDriverKind hid = NeoDriverState.Detect().Hid;
+            for (int settle = 0; settle < 10 && hid != NeoDriverKind.DriverError; settle++) // ~3s
+            {
+                Thread.Sleep(300);
+                hid = NeoDriverState.Detect().Hid;
+            }
+
+            if (hid == NeoDriverKind.DriverError)
             {
                 // A single restart doesn't always clear it - retry once more if needed.
-                for (int attempt = 1; attempt <= 2 && state.Hid == NeoDriverKind.DriverError; attempt++)
+                for (int attempt = 1; attempt <= 2 && hid == NeoDriverKind.DriverError; attempt++)
                 {
                     NeoSyncHelperClient.Send($"RESTART_BD01 {bd04Id}");
                     // The restart can take 10+ seconds to fully settle - keep polling
@@ -313,8 +325,8 @@ internal sealed partial class MainForm : Form
                     for (int j = 0; j < 60; j++)
                     {
                         Thread.Sleep(200);
-                        state = NeoDriverState.Detect();
-                        if (state.Hid != NeoDriverKind.DriverError) break;
+                        hid = NeoDriverState.Detect().Hid;
+                        if (hid != NeoDriverKind.DriverError) break;
                     }
                 }
             }
@@ -351,15 +363,18 @@ internal sealed partial class MainForm : Form
         // subsequent SWITCH call finds BD04 already ready and skips straight to sending bytes.
         if (driverState.Hid != NeoDriverKind.WinUsb)
         {
-            Invoke(() => SetStatus("Installing WinUSB driver on the Neo\u2026", busy: true));
+            Invoke(() => SetStatus("Installing WinUSB driver for the Neo\u2026", busy: true));
             Task<bool> bd04ArrivalTask = _deviceWatcher.WaitForArrivalAsync("vid_081e&pid_bd04", 15_000);
             string installResult = NeoSyncHelperClient.Send("INSTALL_BD04");
             DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Service INSTALL_BD04 \u2192 {installResult}\n");
-            if (installResult == "OK")
-            {
-                bool bd04Arrived = bd04ArrivalTask.Result;
-                DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] BD04 WinUSB arrival event observed={bd04Arrived}\n");
-            }
+            // Don't block on the arrival event here - in practice it often never fires for
+            // this transition (observed 0-for-3 in real testing: a device recovering from a
+            // failed driver start in-place isn't a fresh PnP arrival), so waiting on it was
+            // just adding dead time before the code that actually works (below) ever got to
+            // run. Log it if/when it resolves, but don't gate on it.
+            _ = bd04ArrivalTask.ContinueWith(t =>
+                DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] BD04 WinUSB arrival event observed={t.Result}\n"),
+                TaskScheduler.Default);
         }
 
         // Arm the arrival watcher BEFORE calling SWITCH so a BD01 arrival event firing while
@@ -382,10 +397,14 @@ internal sealed partial class MainForm : Form
             DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] BD01 instanceId={bd01Id ?? "(not in registry)"}\n");
 
             // The service only returns OK once it has confirmed BD01 present, so this should
-            // already be signaled or resolve near-instantly - a short wait here just confirms
-            // it via the real arrival event rather than trusting the service's text response.
-            bool arrived = bd01ArrivalTask.Result;
-            DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] BD01 arrival event observed={arrived}\n");
+            // already be signaled or resolve near-instantly in theory - but in practice the
+            // arrival event has been observed to never fire for this transition (BD01 shows
+            // up already in CM_PROB_FAILED_START, and its recovery to STARTED is an in-place
+            // driver-start retry, not a fresh device arrival). Don't block the poll loop below
+            // on it - just log it asynchronously if it ever resolves.
+            _ = bd01ArrivalTask.ContinueWith(t =>
+                DiagnosticsSettings.AppendLog(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] BD01 arrival event observed={t.Result}\n"),
+                TaskScheduler.Default);
 
             // Poll for up to 25 seconds; open immediately once the interface appears. This
             // remaining loop is no longer "has it arrived at all" (the watcher above already
