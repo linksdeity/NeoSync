@@ -41,7 +41,7 @@ partial class MainForm
         components = new System.ComponentModel.Container();
         SuspendLayout();
 
-        Text          = "NeoSync";
+        Text          = "NeoSync (beta)";
         MinimumSize   = new Size(700, 620);
         Size          = new Size(760, 860);
         StartPosition = FormStartPosition.CenterScreen;
