@@ -143,7 +143,7 @@ internal sealed class DriverSetupForm : Form
                 NeoDriverKind.NotSeen            => "not yet seen on this PC",
                 NeoDriverKind.WindowsHid         => "using the Windows keyboard driver",
                 NeoDriverKind.RenaissanceLearning => "using the old AlphaSmart Manager driver",
-                NeoDriverKind.DriverError        => "driver failed to start - reinstall needed",
+                NeoDriverKind.DriverError        => "WinUSB failed to start - often clears itself, try Connect again first",
                 NeoDriverKind.Other              => "driver was removed or replaced - reinstall needed",
                 _                                => $"driver state: {_state.Hid}"
             };
@@ -156,7 +156,7 @@ internal sealed class DriverSetupForm : Form
             {
                 NeoDriverKind.NotSeen            => "not yet seen on this PC",
                 NeoDriverKind.RenaissanceLearning => "using the old AlphaSmart Manager driver",
-                NeoDriverKind.DriverError        => "driver failed to start - reinstall needed",
+                NeoDriverKind.DriverError        => "WinUSB failed to start - often clears itself, try Connect again first",
                 NeoDriverKind.Other              => "driver was removed or replaced - reinstall needed",
                 _                                => $"driver state: {_state.Comms}"
             };
@@ -184,7 +184,13 @@ internal sealed class DriverSetupForm : Form
                 icon = "\u26A0"; col = Color.DarkOrange;
                 desc = "Windows HID keyboard - WinUSB install needed on first Connect"; break;
             case NeoDriverKind.DriverError:
-                icon = "\u2717"; col = Color.Firebrick; desc = "WinUSB failed to start - reinstall needed"; break;
+                // CM_PROB_FAILED_START right after a mode switch or Neo reboot is usually
+                // transient and already self-heals via a soft device restart elsewhere in
+                // the app (Connect's own retry, or the post-Disconnect cleanup) - confirmed
+                // by repro where this showed red here but Connect worked fine moments later.
+                // Reinstalling is only the right call if it's still stuck after retrying.
+                icon = "\u26A0"; col = Color.DarkOrange;
+                desc = "WinUSB failed to start - often clears itself; try Connect again first"; break;
             case NeoDriverKind.NotSeen:
                 icon = "\u2717"; col = Color.Firebrick; desc = "not seen - needs setup"; break;
             case NeoDriverKind.RenaissanceLearning:
