@@ -20,7 +20,16 @@ internal sealed class SlideToggleButton : Control
     // Never used from the visual designer (this control is only ever built in code) - hidden
     // from designer serialization rather than tagged with a default value.
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public bool PrimaryEnabled { get; set; } = true;
+    public bool PrimaryEnabled
+    {
+        get;
+        set
+        {
+            if (field == value) return;
+            field = value;
+            Invalidate();
+        }
+    } = true;
 
     public event EventHandler? PrimaryClicked;
     public event EventHandler? SecondaryClicked;
