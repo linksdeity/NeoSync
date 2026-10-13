@@ -27,6 +27,7 @@ static class Program
             if (args[0].Equals("--driver-setup", StringComparison.OrdinalIgnoreCase))
             {
                 ApplicationConfiguration.Initialize();
+                SetClassicColorMode();
                 DriverInstallFlow.Run(null);
                 return;
             }
@@ -41,6 +42,16 @@ static class Program
         }
 
         ApplicationConfiguration.Initialize();
+        SetClassicColorMode();
         Application.Run(new MainForm());
     }
+
+    // .NET 9+ auto-detects the OS dark mode setting and switches many controls (notably
+    // StatusStrip, which always uses System render mode) onto an entirely different, largely
+    // untested rendering path - this app's custom painting/colors were never built with that
+    // in mind, and it caused real breakage (e.g. invisible status bar text). Opting out keeps
+    // rendering on the classic path this app was actually designed and tested against.
+#pragma warning disable SYSLIB5002
+    private static void SetClassicColorMode() => Application.SetColorMode(SystemColorMode.Classic);
+#pragma warning restore SYSLIB5002
 }
