@@ -18,9 +18,9 @@ partial class MainForm
     private Button               btnDelete     = null!;
     private SlideToggleButton    btnQuickSync  = null!;
     private ToolStripMenuItem     mnuQuickSyncFolder = null!;
-    private StatusStrip          statusStrip   = null!;
-    private ToolStripStatusLabel lblStatus     = null!;
-    private ThemedMarqueeStatusItem progStatus    = null!;
+    private Panel                statusStrip   = null!;
+    private Label                lblStatus     = null!;
+    private ToolTip               lblStatusTip  = null!;
     private ThemeSwatchPanel     themeSwatches = null!;
     private Panel                pnlUsageBar   = null!;
     private FlowLayoutPanel      pnlButtons    = null!;
@@ -33,6 +33,7 @@ partial class MainForm
             components?.Dispose();
             _device?.Dispose();
             _deviceWatcher.Dispose();
+            _busyTimer.Dispose();
         }
         base.Dispose(disposing);
     }
@@ -49,22 +50,24 @@ partial class MainForm
         try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
         Font          = new Font("Segoe UI", 9f);
 
-        statusStrip = new StatusStrip { Dock = DockStyle.Bottom };
-        // Pin both explicitly rather than just never touching them - StatusStrip renders its
-        // background using its own BackColor even under ToolStripSystemRenderer (it never had
-        // real native-theme support), so an unset/inherited BackColor can end up reflecting the
-        // Form's color instead of staying neutral. This guarantees native-looking chrome
-        // regardless of any theme logic or ambient renderer/color state, now or later.
-        statusStrip.Renderer  = new ToolStripSystemRenderer();
-        statusStrip.BackColor = SystemColors.Control;
-        lblStatus   = new ToolStripStatusLabel("Not connected.") { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
-        statusStrip.Items.Add(lblStatus);
-        // Marquee (indeterminate) rather than a countdown -- actual USB/driver timing isn't
-        // predictable enough to promise a number, so this just shows "something is happening".
-        progStatus = new ThemedMarqueeStatusItem { Visible = false };
-        statusStrip.Items.Add(progStatus);
+        // Plain Panel/Label rather than StatusStrip/ToolStripStatusLabel - the StatusStrip's
+        // own Table layout engine was reliably computing this label's bounds starting past
+        // the strip's own right edge (confirmed via direct inspection: X=740 on a 738-wide
+        // strip), clipping the text away entirely, and neither an explicit layout pass nor
+        // any combination of Renderer/BackColor/Spring settings fixed it. A plain Control
+        // sidesteps that layout engine entirely.
+        statusStrip = new Panel { Dock = DockStyle.Bottom, Height = 26, BackColor = SystemColors.Control };
+        lblStatus   = new Label
+        {
+            Text = "Not connected.", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(4, 0, 0, 0), BackColor = SystemColors.Control, ForeColor = SystemColors.ControlText
+        };
+        lblStatusTip = new ToolTip();
+        statusStrip.Controls.Add(lblStatus);
 
-        pnlUsageBar = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0), Visible = false };
+        // Always visible now - doubles as the busy indicator, so there's always something
+        // useful to show (usage percent, a busy marquee, or just the empty track when idle).
+        pnlUsageBar = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 6) };
         pnlUsageBar.Paint += pnlUsageBar_Paint;
 
         var btnPad = new Padding(0, 0, 6, 0);
@@ -123,11 +126,17 @@ partial class MainForm
         menuAdvanced.Items.Add(new ToolStripControlHost(themeSwatches) { AutoSize = true, Margin = new Padding(0) });
         pnlButtons = new FlowLayoutPanel
         {
-            Dock          = DockStyle.Fill,
-            Padding       = new Padding(6, 6, 6, 4),
+            // Dock=Top + AutoSize, not Dock=Fill - an AutoSize table row sizing a Dock=Fill
+            // child doesn't reliably shrink to the actual content height (confirmed visually:
+            // a large dead gap appeared below the buttons), since a Fill child's preferred
+            // size isn't a reliable content-height signal. Top + AutoSize reports accurate
+            // preferred height while still filling the cell's width.
+            Dock          = DockStyle.Top,
+            AutoSize      = true,
+            AutoSizeMode  = AutoSizeMode.GrowAndShrink,
+            Padding       = new Padding(6, 6, 6, 6),
             FlowDirection = FlowDirection.LeftToRight,
-            WrapContents  = false,
-            AutoSize      = false
+            WrapContents  = false
         };
         pnlButtons.Controls.AddRange(
             new Control[] { btnConnect, btnDownload, btnUpload, btnDelete, btnQuickSync, btnAdvanced });

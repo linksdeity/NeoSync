@@ -4,30 +4,34 @@ namespace NeoSync.App;
 /// Applies an AppTheme's colors to a form and its controls, and to the Advanced dropdown menu
 /// via a custom ProfessionalColorTable (plain BackColor/ForeColor assignment isn't enough for
 /// ContextMenuStrip chrome - the renderer controls that). Deliberately scoped to just that one
-/// menu (via its own Renderer property, not the global ToolStripManager.Renderer) rather than
-/// the status bar - StatusStrip has several native-rendered borders/bevels that don't follow
-/// a simple color table override, so it's simpler and cleaner to just leave it alone entirely.
+/// menu (via its own Renderer property, not the global ToolStripManager.Renderer). The status
+/// bar is excluded by reference (passed in as statusBar) rather than left to always look
+/// native - it's simpler and more reliably neutral-looking to just leave it alone entirely.
 /// "Default" resets everything back to normal WinForms/system colors rather than storing
 /// captured originals, since none of these controls are customized away from their WinForms
 /// defaults elsewhere.
 /// </summary>
 internal static class ThemeManager
 {
-    public static void Apply(Control root, AppTheme theme, ContextMenuStrip menuToTheme, Button? accentButton = null)
+    public static void Apply(Control root, AppTheme theme, ContextMenuStrip menuToTheme, Button? accentButton = null, Control? statusBar = null)
     {
         if (theme.Face is null)
         {
-            ResetRecursive(root);
+            ResetRecursive(root, statusBar);
             menuToTheme.Renderer = null; // falls back to the ambient ToolStripManager renderer
             return;
         }
 
-        ApplyRecursive(root, theme, accentButton);
+        ApplyRecursive(root, theme, accentButton, statusBar);
         menuToTheme.Renderer = new ToolStripProfessionalRenderer(new ThemeColorTable(theme));
     }
 
-    private static void ApplyRecursive(Control control, AppTheme theme, Button? accentButton)
+    private static void ApplyRecursive(Control control, AppTheme theme, Button? accentButton, Control? statusBar)
     {
+        // The status bar (and everything inside it) is deliberately left at its normal
+        // system colors regardless of theme - see its own construction comment for why.
+        if (control == statusBar) return;
+
         switch (control)
         {
             // The one "primary action" button stands out with the theme's title-bar accent
@@ -55,20 +59,19 @@ internal static class ThemeManager
             case SlideToggleButton stb:
                 stb.ApplyTheme(theme);
                 break;
-            case StatusStrip:
-                // StatusStrip chrome comes from ToolStripManager.Renderer, not BackColor - skip.
-                break;
             default:
                 control.BackColor = theme.Face!.Value;
                 break;
         }
 
         foreach (Control child in control.Controls)
-            ApplyRecursive(child, theme, accentButton);
+            ApplyRecursive(child, theme, accentButton, statusBar);
     }
 
-    private static void ResetRecursive(Control control)
+    private static void ResetRecursive(Control control, Control? statusBar)
     {
+        if (control == statusBar) return;
+
         switch (control)
         {
             case Button btn:
@@ -83,15 +86,13 @@ internal static class ThemeManager
             case SlideToggleButton stb:
                 stb.ApplyTheme(AppTheme.Default);
                 break;
-            case StatusStrip:
-                break;
             default:
                 control.BackColor = SystemColors.Control;
                 break;
         }
 
         foreach (Control child in control.Controls)
-            ResetRecursive(child);
+            ResetRecursive(child, statusBar);
     }
 
     /// <summary>Recolors menu/status-bar chrome to match the theme - ToolStrip-family controls

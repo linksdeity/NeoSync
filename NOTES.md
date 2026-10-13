@@ -213,7 +213,6 @@ NeoSync.slnx
     |-- ThemeManager.cs          Applies an AppTheme to the form/controls/Advanced menu
     |-- ThemeSettings.cs         Persists the selected theme
     |-- ThemeSwatchPanel.cs      Theme swatch picker shown in the Advanced menu
-    |-- ThemedMarqueeStatusItem.cs  Owner-drawn status bar busy indicator
     `-- SlideToggleButton.cs     Quick Sync / Open Folder two-action button
 ```
 

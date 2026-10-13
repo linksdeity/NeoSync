@@ -17,6 +17,9 @@ internal sealed partial class MainForm : Form
     private uint _flashFreeBytes;
     private bool _usageHasData;
     private AppTheme _currentTheme = AppTheme.Default;
+    private bool _busy;
+    private float _busyPosition;
+    private readonly System.Windows.Forms.Timer _busyTimer = new() { Interval = 30 };
 
     // Created on the UI thread so its hidden message-only window shares the form's message
     // pump - ConnectAsync (a background thread) awaits its Tasks, which is thread-safe.
@@ -26,12 +29,18 @@ internal sealed partial class MainForm : Form
     {
         InitializeComponent();
         ApplyTheme(ThemeSettings.GetTheme());
+        _busyTimer.Tick += (_, _) =>
+        {
+            _busyPosition += 0.03f;
+            if (_busyPosition > 1.3f) _busyPosition = -0.3f;
+            pnlUsageBar.Invalidate();
+        };
     }
 
     private void ApplyTheme(AppTheme theme)
     {
         _currentTheme = theme;
-        ThemeManager.Apply(this, theme, menuAdvanced, btnConnect);
+        ThemeManager.Apply(this, theme, menuAdvanced, btnConnect, statusStrip);
         themeSwatches.ApplyTheme(theme);
         pnlUsageBar.Invalidate();
     }
@@ -191,7 +200,7 @@ internal sealed partial class MainForm : Form
     {
         if (_device is null) return;
 
-        SetStatus("Quick Sync starting…");
+        SetStatus("Quick Sync starting…", busy: true);
         btnQuickSync.PrimaryEnabled = false;
 
         Task.Run(QuickSync).ContinueWith(t =>
@@ -200,7 +209,12 @@ internal sealed partial class MainForm : Form
             {
                 btnQuickSync.PrimaryEnabled = _device is not null;
                 if (t.Exception != null)
-                    SetStatus($"Quick Sync failed: {t.Exception.InnerException?.Message ?? t.Exception.Message}");
+                {
+                    string message = t.Exception.InnerException?.Message ?? t.Exception.Message;
+                    SetStatus($"Quick Sync failed: {message}");
+                    MessageBox.Show(this, $"Quick Sync failed:\r\n{message}",
+                        "NeoSync - Quick Sync", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             });
         });
     }
@@ -248,13 +262,21 @@ internal sealed partial class MainForm : Form
             Directory.CreateDirectory(archiveDir);
             foreach (string file in existing)
                 File.Move(file, Path.Combine(archiveDir, Path.GetFileName(file)), overwrite: true);
-            Invoke(() => SetStatus($"Backed up {existing.Length} existing file(s)…"));
+            // busy: true -- SetStatus defaults to false, which would otherwise hide the
+            // marquee for the rest of the sync (the actual download loop below never
+            // updates the status again until it's done).
+            Invoke(() => SetStatus($"Backed up {existing.Length} existing file(s)…", busy: true));
         }
 
         NeoApplet? alphaWord = _applets.FirstOrDefault(a => a.IsAlphaWord);
         if (alphaWord is null)
         {
-            Invoke(() => SetStatus("Quick Sync: no AlphaWord files found."));
+            Invoke(() =>
+            {
+                SetStatus("Quick Sync: no AlphaWord files found.");
+                MessageBox.Show(this, "No AlphaWord files were found on the Neo.",
+                    "NeoSync - Quick Sync", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            });
             return;
         }
 
@@ -285,7 +307,12 @@ internal sealed partial class MainForm : Form
             }
         }
 
-        Invoke(() => SetStatus($"Quick Sync complete: {synced} file(s) saved to {folder}."));
+        Invoke(() =>
+        {
+            SetStatus($"Quick Sync complete: {synced} file(s) saved to {folder}.");
+            MessageBox.Show(this, $"Quick Sync complete: {synced} file(s) saved to:\r\n{folder}",
+                "NeoSync - Quick Sync", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        });
     }
 
     /// <summary>File names come from the device and shouldn't be trusted to build a
@@ -981,8 +1008,18 @@ internal sealed partial class MainForm : Form
     private void SetStatus(string text, bool busy = false)
     {
         lblStatus.Text = text;
-        lblStatus.ToolTipText = text; // full message on hover in case it's too long to fit
-        progStatus.Visible = busy;
+        lblStatusTip.SetToolTip(lblStatus, text); // full message on hover in case it's too long to fit
+        _busy = busy;
+        if (busy)
+        {
+            _busyPosition = -0.3f;
+            _busyTimer.Start();
+        }
+        else
+        {
+            _busyTimer.Stop();
+        }
+        pnlUsageBar.Invalidate();
     }
 
     private void UpdateUsageBar(uint usedBytes, uint freeBytes, uint flashFreeBytes)
@@ -991,14 +1028,13 @@ internal sealed partial class MainForm : Form
         _usageFreeBytes = freeBytes;
         _flashFreeBytes = flashFreeBytes;
         _usageHasData   = true;
-        pnlUsageBar.Visible = true;
         pnlUsageBar.Invalidate();
     }
 
     private void HideUsageBar()
     {
         _usageHasData = false;
-        pnlUsageBar.Visible = false;
+        pnlUsageBar.Invalidate();
     }
 
     private void pnlUsageBar_Paint(object? sender, PaintEventArgs e)
@@ -1015,7 +1051,17 @@ internal sealed partial class MainForm : Form
         using (var bg = new SolidBrush(trackColor))
             g.FillRectangle(bg, rect);
 
-        if (_usageHasData)
+        if (_busy)
+        {
+            // Doubles as the busy/marquee indicator so a second status-bar-hosted control
+            // isn't needed - this space is otherwise idle whenever an operation is running.
+            int blockWidth = Math.Max(20, rect.Width / 6);
+            int blockX = (int)(_busyPosition * rect.Width);
+            var blockRect = Rectangle.Intersect(new Rectangle(blockX, 0, blockWidth, rect.Height), rect);
+            using var fg = new SolidBrush(fillColor);
+            g.FillRectangle(fg, blockRect);
+        }
+        else if (_usageHasData)
         {
             uint total = _usageUsedBytes + _usageFreeBytes;
             double fraction = total > 0 ? (double)_usageUsedBytes / total : 0;
