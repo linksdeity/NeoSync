@@ -30,7 +30,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>neosync.ico</ApplicationIcon>
-    <Version>0.9.6</Version>
+    <Version>0.9.7</Version>
     <Product>NeoSync</Product>
     <Company>NeoSync</Company>
   </PropertyGroup>
