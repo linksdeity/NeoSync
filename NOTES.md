@@ -178,7 +178,7 @@ System/font/spell applets have hidden bit set (`flags & 0x01 == 1`).
 
 ```
 NeoSync.slnx
-|-- NeoSync.Core/              (.NET 8 class library, zero NuGet deps)
+|-- NeoSync.Core/              (.NET 10 class library, zero NuGet deps)
 |   |-- Protocol/
 |   |   |-- NeoMessageCodes.cs   All ASMESSAGE_* constants (from ASMessage.h)
 |   |   |-- NeoMessage.cs        8-byte protocol frame with checksum
@@ -196,9 +196,9 @@ NeoSync.slnx
 |       |-- NeoUsbDiag.cs        SetupDi/CM_* diagnostics, generic instance lookup
 |       |-- Bd04WinUsbCycle.cs   BD04 WinUSB install/restart via pnputil
 |       `-- NeoDriverInstaller.cs  Driver package removal (pnputil /delete-driver)
-|-- NeoSync.Service/            (.NET 8 Windows Service, AssemblyName=NeoSyncHelper)
+|-- NeoSync.Service/            (.NET 10 Windows Service, AssemblyName=NeoSyncHelper)
 |   `-- NeoSyncWorker.cs         Named-pipe server; SWITCH/SETUP_DRIVERS/REMOVE_DRIVERS/etc.
-`-- NeoSync.App/                (.NET 8 WinForms)
+`-- NeoSync.App/                (.NET 10 WinForms)
     |-- MainForm.cs              Connect/Disconnect/Download/Upload/Quick Sync/filter logic
     |-- MainForm.Designer.cs     TableLayoutPanel layout, AutoSize buttons
     |-- RepairNeoSyncForm.cs     Advanced > Repair NeoSync - driver/service status + actions

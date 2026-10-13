@@ -79,7 +79,7 @@ Advanced > Repair NeoSync.
 
 ## Building from source
 
-Requires the .NET 8 SDK and Inno Setup 7.
+Requires the .NET 10 SDK and Inno Setup 7.
 
 ```powershell
 dotnet build NeoSync.slnx -c Release
@@ -89,7 +89,7 @@ To build the full installer (publishes the app and the background service,
 then compiles the Inno Setup script):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Version "0.9.5"
+powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Version "0.9.6"
 ```
 
 This requires a pre-signed WinUSB driver package in `installer\driver\`. See

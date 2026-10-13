@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows.Forms.VisualStyles;
 
 namespace NeoSync.App;
@@ -16,6 +17,9 @@ internal sealed class SlideToggleButton : Control
 
     /// <summary>Whether the primary action is currently usable. The secondary action and the
     /// arrow toggle itself always remain clickable regardless of this.</summary>
+    // Never used from the visual designer (this control is only ever built in code) - hidden
+    // from designer serialization rather than tagged with a default value.
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool PrimaryEnabled { get; set; } = true;
 
     public event EventHandler? PrimaryClicked;
