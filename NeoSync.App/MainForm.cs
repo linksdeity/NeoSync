@@ -288,7 +288,7 @@ internal sealed partial class MainForm : Form
         for (int i = 1; i <= fileCount; i++)
         {
             NeoFileAttributes? attr = _device?.GetFileAttributes(alphaWord, i);
-            if (attr is null || attr.AllocSize <= attr.MinSize) continue; // skip empty files
+            if (attr is null) continue;
 
             byte[]? data = _device?.ReadFile(alphaWord, i);
             if (data is null || data.Length == 0) continue;
@@ -296,6 +296,10 @@ internal sealed partial class MainForm : Form
             try
             {
                 string text = ConvertAlphaWordBytes(data);
+                // A short upload pads to the same 512-byte minimum block as MinSize itself, so
+                // AllocSize can't reliably flag "empty" -- skip based on decoded content instead.
+                if (string.IsNullOrWhiteSpace(text)) continue;
+
                 string baseName = string.IsNullOrEmpty(attr.FileName) ? $"File {i}" : attr.FileName;
                 string destPath = Path.Combine(folder, SanitizeFileName(baseName) + ".txt");
                 File.WriteAllText(destPath, text, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
@@ -307,12 +311,7 @@ internal sealed partial class MainForm : Form
             }
         }
 
-        Invoke(() =>
-        {
-            SetStatus($"Quick Sync complete: {synced} file(s) saved to {folder}.");
-            MessageBox.Show(this, $"Quick Sync complete: {synced} file(s) saved to:\r\n{folder}",
-                "NeoSync - Quick Sync", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        });
+        Invoke(() => SetStatus($"Quick Sync complete: {synced} file(s) saved to {folder}."));
     }
 
     /// <summary>File names come from the device and shouldn't be trusted to build a
@@ -351,8 +350,13 @@ internal sealed partial class MainForm : Form
             // too early (confirmed via a real repro: Repair NeoSync showed BD04 failed to
             // start right after a Disconnect that had already reported "Disconnected."
             // fine). Give it a short settle window instead of trusting the first snapshot.
+            // NOTE: this loop runs its full duration whenever BD04 stays healthy (the
+            // common case) - keep this short, every disconnect pays this tax regardless
+            // of whether anything was ever actually wrong. Was 10x300ms (~3s); the
+            // original race was observed appearing quickly, not gradually, so 4x300ms
+            // (~1.2s) still catches it while cutting the guaranteed per-disconnect cost.
             NeoDriverKind hid = NeoDriverState.Detect().Hid;
-            for (int settle = 0; settle < 10 && hid != NeoDriverKind.DriverError; settle++) // ~3s
+            for (int settle = 0; settle < 4 && hid != NeoDriverKind.DriverError; settle++) // ~1.2s
             {
                 Thread.Sleep(300);
                 hid = NeoDriverState.Detect().Hid;
@@ -609,6 +613,43 @@ internal sealed partial class MainForm : Form
     }
 
     /// <summary>
+    /// The Neo's 256-byte character table - an extended CP1252 where bytes 0x00-0x1F, 0x7F,
+    /// 0x81, 0x8D and 0x8F are repurposed for extra math/Greek/arrow symbols instead of the
+    /// usual control codes. Ported byte-for-byte from neoToUnicodeTable in AlphaSync's ASFile.cc.
+    /// </summary>
+    private static readonly char[] NeoToUnicodeTable =
+    [
+        '\u25a0', '\u03b4', '\u0394', '\u222b', '\u0143', '\u0133', '\u274f', '\u2154', '\u02d9', '\u21e5', '\u2193', '\u2191', '\u2913', '\u21b5', '\u2908', '\u2909',
+        '\u2192', '\u2153', '\u039e', '\u03b1', '\u03c1', '\u2195', '\u21a9', '\u25a1', '\u221a', '\u2264', '\u2265', '\u03b8', '\u221e', '\u03a9', '\u03b2', '\u03a3',
+        '\u0020', '\u0021', '\u0022', '\u0023', '\u0024', '\u0025', '\u0026', '\u0027', '\u0028', '\u0029', '\u002a', '\u002b', '\u002c', '\u002d', '\u002e', '\u002f',
+        '\u0030', '\u0031', '\u0032', '\u0033', '\u0034', '\u0035', '\u0036', '\u0037', '\u0038', '\u0039', '\u003a', '\u003b', '\u003c', '\u003d', '\u003e', '\u003f',
+        '\u0040', '\u0041', '\u0042', '\u0043', '\u0044', '\u0045', '\u0046', '\u0047', '\u0048', '\u0049', '\u004a', '\u004b', '\u004c', '\u004d', '\u004e', '\u004f',
+        '\u0050', '\u0051', '\u0052', '\u0053', '\u0054', '\u0055', '\u0056', '\u0057', '\u0058', '\u0059', '\u005a', '\u005b', '\u005c', '\u005d', '\u005e', '\u005f',
+        '\u0060', '\u0061', '\u0062', '\u0063', '\u0064', '\u0065', '\u0066', '\u0067', '\u0068', '\u0069', '\u006a', '\u006b', '\u006c', '\u006d', '\u006e', '\u006f',
+        '\u0070', '\u0071', '\u0072', '\u0073', '\u0074', '\u0075', '\u0076', '\u0077', '\u0078', '\u0079', '\u007a', '\u007b', '\u007c', '\u007d', '\u007e', '\u2190',
+        '\u20ac', '\u00ac', '\u201a', '\u0192', '\u201e', '\u2026', '\u2020', '\u2021', '\u02c6', '\u2030', '\u0160', '\u2039', '\u0152', '\u03a6', '\u017d', '\u03a0',
+        '\u2035', '\u2018', '\u2019', '\u201c', '\u201d', '\u2022', '\u2013', '\u2014', '\u02dc', '\u2122', '\u0161', '\u203a', '\u0153', '\u03c0', '\u017e', '\u0178',
+        '\u00a0', '\u00a1', '\u00a2', '\u00a3', '\u00a4', '\u00a5', '\u00a6', '\u00a7', '\u00a8', '\u00a9', '\u00aa', '\u00ab', '\u00ac', '\u00ad', '\u00ae', '\u00af',
+        '\u00b0', '\u00b1', '\u00b2', '\u00b3', '\u00b4', '\u00b5', '\u00b6', '\u00b7', '\u00b8', '\u00b9', '\u00ba', '\u00bb', '\u00bc', '\u00bd', '\u00be', '\u00bf',
+        '\u00c0', '\u00c1', '\u00c2', '\u00c3', '\u00c4', '\u00c5', '\u00c6', '\u00c7', '\u00c8', '\u00c9', '\u00ca', '\u00cb', '\u00cc', '\u00cd', '\u00ce', '\u00cf',
+        '\u00d0', '\u00d1', '\u00d2', '\u00d3', '\u00d4', '\u00d5', '\u00d6', '\u00d7', '\u00d8', '\u00d9', '\u00da', '\u00db', '\u00dc', '\u00dd', '\u00de', '\u00df',
+        '\u00e0', '\u00e1', '\u00e2', '\u00e3', '\u00e4', '\u00e5', '\u00e6', '\u00e7', '\u00e8', '\u00e9', '\u00ea', '\u00eb', '\u00ec', '\u00ed', '\u00ee', '\u00ef',
+        '\u00f0', '\u00f1', '\u00f2', '\u00f3', '\u00f4', '\u00f5', '\u00f6', '\u00f7', '\u00f8', '\u00f9', '\u00fa', '\u00fb', '\u00fc', '\u00fd', '\u00fe', '\u00ff',
+    ];
+
+    /// <summary>Reverse of <see cref="NeoToUnicodeTable"/> for encoding. Lowest byte index wins on
+    /// duplicate Unicode values (only 0x00AC occurs twice), matching ASFile::unicodeToNeo's linear scan.</summary>
+    private static readonly Dictionary<char, byte> UnicodeToNeoTable = BuildUnicodeToNeoTable();
+
+    private static Dictionary<char, byte> BuildUnicodeToNeoTable()
+    {
+        var map = new Dictionary<char, byte>(NeoToUnicodeTable.Length);
+        for (int i = 0; i < NeoToUnicodeTable.Length; i++)
+            map.TryAdd(NeoToUnicodeTable[i], (byte)i);
+        return map;
+    }
+
+    /// <summary>
     /// Converts raw AlphaWord file bytes to a clean Unicode string.
     /// Ported from ASAlphaWordFile::exportText() - Copyright (c) 2008-2013 tSoniq.
     /// </summary>
@@ -618,11 +659,6 @@ internal sealed partial class MainForm : Form
         int length = data.Length;
         while (length > 0 && (data[length - 1] == 0x00 || data[length - 1] == 0xa7)) length--;
         if (length == 0) return string.Empty;
-
-        // Neo character encoding is roughly CP1252 (Windows-1252)
-        System.Text.Encoding neoEncoding;
-        try { neoEncoding = System.Text.Encoding.GetEncoding(1252); }
-        catch { neoEncoding = System.Text.Encoding.Latin1; }
 
         var sb = new System.Text.StringBuilder(length);
         int i = 0;
@@ -673,7 +709,7 @@ internal sealed partial class MainForm : Form
                     {
                         int escaped = data[i++];
                         if (i < length && data[i] == 0xb0) i++; // skip closing marker
-                        AppendNeoChar(sb, escaped, neoEncoding);
+                        AppendNeoChar(sb, escaped);
                     }
                     continue;
             }
@@ -681,29 +717,43 @@ internal sealed partial class MainForm : Form
             // Skip other unknown control codes in the 0xa1–0xbf range
             if (code >= 0xa1 && code <= 0xbf) continue;
 
-            AppendNeoChar(sb, code, neoEncoding);
+            AppendNeoChar(sb, code);
         }
 
         return sb.ToString();
     }
 
-    private static void AppendNeoChar(System.Text.StringBuilder sb, int code, System.Text.Encoding enc)
+    private static void AppendNeoChar(System.Text.StringBuilder sb, int code)
     {
-        if (code < 0x20) return;                    // skip remaining control codes
-        if (code <= 0x7e) { sb.Append((char)code); return; }
-        // 0x80–0xFF: decode via CP1252
-        sb.Append(enc.GetString([(byte)code]));
+        if (code is < 0 or > 255) return;
+        sb.Append(NeoToUnicodeTable[code]);
     }
 
     private void UploadFile(NeoApplet applet, int fileIndex, string srcPath)
     {
-        // Read source as UTF-8 text
-        string text;
-        try { text = File.ReadAllText(srcPath, new System.Text.UTF8Encoding(false)); }
+        // Read raw bytes first and try strict UTF-8 (throwOnInvalidBytes). If that fails, fall
+        // back to CP1252 silently - same heuristic Notepad/browsers use for BOM-less files, and
+        // CP1252 is close enough to the Neo's own character table that this fallback is lossless
+        // in practice; genuinely untranslatable characters are handled by EncodeAlphaWordText.
+        byte[] rawBytes;
+        try { rawBytes = File.ReadAllBytes(srcPath); }
         catch (Exception ex)
         {
             Invoke(() => SetStatus($"Could not read file: {ex.Message}"));
             return;
+        }
+
+        string text;
+        try
+        {
+            text = new System.Text.UTF8Encoding(false, throwOnInvalidBytes: true).GetString(rawBytes);
+        }
+        catch (DecoderFallbackException)
+        {
+            System.Text.Encoding cp1252Read;
+            try { cp1252Read = System.Text.Encoding.GetEncoding(1252); }
+            catch { cp1252Read = System.Text.Encoding.Latin1; }
+            text = cp1252Read.GetString(rawBytes);
         }
 
         // Reject obviously binary content (null bytes are not valid in plain text)
@@ -753,36 +803,30 @@ internal sealed partial class MainForm : Form
         // Normalise to CR-only line endings (AlphaWord paragraph marker = 0x0D)
         text = text.Replace("\r\n", "\r").Replace("\n", "\r");
 
-        // CP1252 for extended characters (Neo encoding is "roughly CP1252")
-        System.Text.Encoding cp1252;
-        try { cp1252 = System.Text.Encoding.GetEncoding(1252); }
-        catch { cp1252 = System.Text.Encoding.Latin1; }
-
         var result = new List<byte>(Math.Max(text.Length + 64, minFileSize));
 
         foreach (char c in text)
         {
-            if (c == '\r')        { result.Add(0x0D); continue; }
-            if (c == '\t')        { result.Add(0x09); continue; }
-            if (c == '\n')        { result.Add(0x0D); continue; } // treat stray LF as paragraph
+            if (c == '\t') { result.Add(0x09); continue; }
+            if (c == '\r') { result.Add(0x0D); continue; }
+            if (c == '\n') { result.Add(0x0D); continue; } // treat stray LF as paragraph
 
-            if (c < 0x20)         continue;   // skip other control chars
-            if (c <= 0x7E)        { result.Add((byte)c); continue; }
-
-            // Extended character: encode via CP1252
-            byte[] enc;
-            try { enc = cp1252.GetBytes(c.ToString()); }
-            catch { continue; }
-
-            if (enc.Length == 1)
+            byte code;
+            bool escape;
+            if (UnicodeToNeoTable.TryGetValue(c, out byte resolved))
             {
-                byte b = enc[0];
-                // Codes 0xa1–0xbf are AlphaWord control codes - wrap in escape {0xb0, b, 0xb0}
-                if (b >= 0xa1 && b <= 0xbf)
-                    { result.Add(0xb0); result.Add(b); result.Add(0xb0); }
-                else
-                    result.Add(b);
+                if (resolved == 0x81) resolved = 0xac; // avoid clashing with the line-breaking-space hint byte
+                code = resolved;
+                escape = (code >= 0xa1 && code <= 0xbf) || code is 0x09 or 0x0a or 0x0d;
             }
+            else
+            {
+                code = 0x00; // kNeoUntranslatableCharacter
+                escape = false;
+            }
+
+            if (escape) { result.Add(0xb0); result.Add(code); result.Add(0xb0); }
+            else result.Add(code);
         }
 
         // Pad to minimum file size with the AlphaWord pad byte
@@ -927,7 +971,12 @@ internal sealed partial class MainForm : Form
             {
                 NeoFileAttributes? attr = _device?.GetFileAttributes(applet, i);
                 string label = attr?.FileName is { Length: > 0 } name ? name : $"File {i}";
-                bool hasContent = attr is not null && attr.AllocSize > attr.MinSize;
+
+                // A short upload pads to the same 512-byte minimum block as MinSize itself, so
+                // AllocSize alone can't tell "short real content" apart from "genuinely empty" --
+                // read the actual content for AlphaWord files rather than trusting size alone.
+                string? preview = isAlphaWord ? GetFilePreview(applet, i) : null;
+                bool hasContent = preview is not null || (attr is not null && attr.AllocSize > attr.MinSize);
                 // AlphaWord is always enumerated regardless of the show-all-applets toggle,
                 // so this total is a stable measure of the device's user-content usage.
                 if (isAlphaWord && attr is not null) alphaWordUsedBytes += attr.AllocSize;
@@ -945,7 +994,6 @@ internal sealed partial class MainForm : Form
                 // AlphaWord-only: other applets' files aren't plain text, so a text preview
                 // wouldn't be meaningful. Every file still gets a child node (blank if no
                 // preview) so empty and non-empty files take up the same vertical space.
-                string? preview = isAlphaWord && hasContent ? GetFilePreview(applet, i) : null;
                 var previewNode = new TreeNode(preview ?? string.Empty)
                 {
                     Tag         = (applet, i), // clicking the preview line selects its file too
