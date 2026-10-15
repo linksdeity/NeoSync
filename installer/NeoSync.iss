@@ -1,8 +1,8 @@
 [Setup]
 AppName=NeoSync
-; AppVersion is passed from build.ps1 via /DAppVersion=x.y.z - defaults to 0.9.7 for IDE use.
+; AppVersion is passed from build.ps1 via /DAppVersion=x.y.z - defaults to 0.9.8 for IDE use.
 #ifndef AppVersion
-  #define AppVersion "0.9.7"
+  #define AppVersion "0.9.8"
 #endif
 AppVersion={#AppVersion}
 AppPublisher=NeoSync
