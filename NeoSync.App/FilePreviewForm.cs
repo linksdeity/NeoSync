@@ -53,13 +53,14 @@ internal sealed class FilePreviewForm : Form
 
         _txtBody = new TextBox
         {
-            Multiline  = true,
-            ReadOnly   = false,
-            ScrollBars = ScrollBars.None,
-            WordWrap   = true,
-            Font       = new Font("Segoe UI", _fontSize),
-            Text       = normalizedText,
-            BorderStyle = BorderStyle.None
+            Multiline    = true,
+            ReadOnly     = false,
+            ScrollBars   = ScrollBars.None,
+            WordWrap     = true,
+            AcceptsReturn = true,
+            Font         = new Font("Segoe UI", _fontSize),
+            Text         = normalizedText,
+            BorderStyle  = BorderStyle.None
         };
         // Wired after the initial Text assignment above, so loading the file doesn't itself
         // count as an edit.
@@ -155,20 +156,18 @@ internal sealed class FilePreviewForm : Form
         };
         pnlToolbar.Controls.AddRange([_btnSave, btnDownload, btnFontUp, btnFontDown, pnlThemeSwatches]);
 
-        var btnClose = new Button { Text = "Close", AutoSize = true, DialogResult = DialogResult.OK };
         _lblStatus = new Label
         {
             AutoSize = true, Anchor = AnchorStyles.Left,
-            Margin = new Padding(0, 8, 0, 0), TextAlign = ContentAlignment.MiddleLeft
+            Margin = new Padding(0), TextAlign = ContentAlignment.MiddleLeft
         };
         var pnlButtons = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.RightToLeft,
             Dock          = DockStyle.Bottom,
             AutoSize      = true,
-            Padding       = new Padding(8)
+            Padding       = new Padding(8, 4, 8, 4)
         };
-        pnlButtons.Controls.Add(btnClose);
         pnlButtons.Controls.Add(_lblStatus);
 
         var pnlBody = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.Fixed3D };
@@ -180,8 +179,6 @@ internal sealed class FilePreviewForm : Form
         Controls.Add(pnlBody);
         Controls.Add(pnlToolbar);
         Controls.Add(pnlButtons);
-        AcceptButton = btnClose;
-        CancelButton = btnClose;
 
         FormClosing += FilePreviewForm_FormClosing;
         FormClosed  += (_, _) => _scrollPollTimer.Dispose();
