@@ -177,6 +177,7 @@ partial class MainForm
         btnQuickSync.SecondaryClicked += (_, _) => OpenQuickSyncFolder();
         btnAdvanced.Click   += (_, _) => menuAdvanced.Show(btnAdvanced, 0, btnAdvanced.Height);
         treeFiles.AfterSelect += treeFiles_AfterSelect;
+        treeFiles.NodeMouseDoubleClick += treeFiles_NodeMouseDoubleClick;
 
         Controls.Add(statusStrip);
         Controls.Add(tableLayout);

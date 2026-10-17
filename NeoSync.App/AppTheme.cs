@@ -30,7 +30,11 @@ internal sealed class AppTheme
     public static readonly AppTheme Desert = new("Desert", Color.FromArgb(0, 128, 128),  Color.FromArgb(213, 204, 187), Color.FromArgb(162, 141, 104), Color.FromArgb(234, 230, 221), Color.Black);
     public static readonly AppTheme Rose   = new("Rose",   Color.FromArgb(159, 96, 112), Color.FromArgb(207, 175, 183), Color.FromArgb(159, 96, 112),  Color.FromArgb(231, 216, 220), Color.Black);
 
-    public static readonly AppTheme[] All = [Default, Slate, Spruce, Plum, Brick, Maple, Desert, Rose];
+    // Not one of the classic2000 schemes - a modern dark palette, added for the file preview
+    // window's theme swatches (also selectable app-wide like any other scheme).
+    public static readonly AppTheme DarkMode = new("Dark Mode", Color.FromArgb(0, 122, 204), Color.FromArgb(45, 45, 48), Color.FromArgb(20, 20, 20), Color.FromArgb(62, 62, 66), Color.Gainsboro);
+
+    public static readonly AppTheme[] All = [Default, Slate, Spruce, Plum, Brick, Maple, Desert, Rose, DarkMode];
 
     public static AppTheme ByName(string? name) => All.FirstOrDefault(t => t.Name == name) ?? Default;
 }
