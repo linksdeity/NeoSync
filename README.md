@@ -89,7 +89,7 @@ To build the full installer (publishes the app and the background service,
 then compiles the Inno Setup script):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Version "0.9.9"
+powershell -ExecutionPolicy Bypass -File installer\build.ps1 -Version "0.9.10"
 ```
 
 This requires a pre-signed WinUSB driver package in `installer\driver\`. See
