@@ -52,12 +52,11 @@ internal sealed partial class MainForm : Form
         if (_device != null)
         {
             // Connected → disconnect and reboot Neo to keyboard mode
-            btnConnect.Enabled  = false;
-            _device.Restart();
-            _device.Dispose();
+            NeoDevice deviceToClose = _device;
             _device = null;
             _applets.Clear();
             treeFiles.Nodes.Clear();
+            btnConnect.Enabled   = false;
             btnDownload.Enabled  = false;
             btnUpload.Enabled    = false;
             btnDelete.Enabled    = false;
@@ -66,10 +65,14 @@ internal sealed partial class MainForm : Form
             HideUsageBar();
             SetStatus("Disconnecting\u2026", busy: true);
 
-            // BD04 sometimes lands in a transient failed-start state when the Neo
-            // reboots back into keyboard mode - same issue as on Connect, fixed the
-            // same way (a soft device restart, not a reinstall).
-            Task.Run(FixBd04AfterDisconnect).ContinueWith(_ =>
+            // Restart() blocks on device I/O - run it off the UI thread. A stuck BD04 after
+            // this reboot is already handled by Connect's own driver recovery (it force-installs
+            // WinUSB whenever BD04 isn't healthy), so there's nothing else to poll for here.
+            Task.Run(() =>
+            {
+                deviceToClose.Restart();
+                deviceToClose.Dispose();
+            }).ContinueWith(_ =>
             {
                 Invoke(() => { SetStatus("Disconnected."); btnConnect.Enabled = true; });
             });
@@ -331,58 +334,6 @@ internal sealed partial class MainForm : Form
     /// a soft device restart (not a reinstall) reliably clears it. Runs on a
     /// background thread; polls briefly since the physical re-enumeration isn't instant.
     /// </summary>
-    private static void FixBd04AfterDisconnect()
-    {
-        for (int i = 0; i < 40; i++) // up to ~12s for the Neo to physically re-enumerate
-        {
-            Thread.Sleep(300);
-
-            // Confirm a LIVE instance actually exists before trusting its driver kind -
-            // NeoDriverState.Detect() falls back to stale ghost data (from before the
-            // reboot) when nothing is currently present, which was causing this loop to
-            // wrongly conclude "already healthy" before the device had even come back.
-            string? bd04Id = NeoUsbDiag.FindVidPidInstanceId("VID_081E&PID_BD04");
-            if (bd04Id is null || !NeoUsbDiag.GetDevicePresence(bd04Id).Present) continue;
-
-            // CM_PROB_FAILED_START doesn't always show up the instant the device becomes
-            // present - it can appear a moment later as Windows finishes starting the
-            // driver. A single immediate check here was missing that and declaring victory
-            // too early (confirmed via a real repro: Repair NeoSync showed BD04 failed to
-            // start right after a Disconnect that had already reported "Disconnected."
-            // fine). Give it a short settle window instead of trusting the first snapshot.
-            // NOTE: this loop runs its full duration whenever BD04 stays healthy (the
-            // common case) - keep this short, every disconnect pays this tax regardless
-            // of whether anything was ever actually wrong. Was 10x300ms (~3s); the
-            // original race was observed appearing quickly, not gradually, so 4x300ms
-            // (~1.2s) still catches it while cutting the guaranteed per-disconnect cost.
-            NeoDriverKind hid = NeoDriverState.Detect().Hid;
-            for (int settle = 0; settle < 4 && hid != NeoDriverKind.DriverError; settle++) // ~1.2s
-            {
-                Thread.Sleep(300);
-                hid = NeoDriverState.Detect().Hid;
-            }
-
-            if (hid == NeoDriverKind.DriverError)
-            {
-                // A single restart doesn't always clear it - retry once more if needed.
-                for (int attempt = 1; attempt <= 2 && hid == NeoDriverKind.DriverError; attempt++)
-                {
-                    NeoSyncHelperClient.Send($"RESTART_BD01 {bd04Id}");
-                    // The restart can take 10+ seconds to fully settle - keep polling
-                    // rather than assuming one restart call is instantly effective.
-                    for (int j = 0; j < 60; j++)
-                    {
-                        Thread.Sleep(200);
-                        hid = NeoDriverState.Detect().Hid;
-                        if (hid != NeoDriverKind.DriverError) break;
-                    }
-                }
-            }
-
-            return; // present and either healthy or we've done what we can - stop polling
-        }
-    }
-
     private void ConnectAsync()
     {
         // Check driver state before attempting anything.
