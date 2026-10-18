@@ -88,7 +88,7 @@ The preview editor has buttons for increasing and decreasing the font size, as w
 2. Allow drag and drop text files.
 3. Support applet files.
 4. Support Neo system updates.
-5. Add more fucntionality to the preview editor (line numbers, zebra striping, character/word count, etc).
+5. Add more functionality to the preview editor (line numbers, zebra striping, character/word count, etc).
 
 ## Building from source
 
