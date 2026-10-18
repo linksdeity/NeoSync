@@ -18,18 +18,18 @@ endorsed by Renaissance Learning or AlphaSmart.
 - Downloads and uploads files as plain text.
 - Quick Sync: one click to pull every file on the device into a folder on
   your PC, backing up whatever was already there first.
+- Preview Editor: double click a text preview to view the full text before
+  downloading it. You can also make edits!
 - Installs its own WinUSB driver for the device, since Windows blocks direct
   USB access to a device that is enumerated as a keyboard.
-- Optional classic Windows 2000-style color themes, picked from swatches in
-  the Advanced menu.
+- Optional classic Windows color themes, picked from swatches in
+  the Advanced menu, or the pallette in the preview editor.
 
 ## Requirements
 
 - Windows 10 or later, 64-bit.
 - An AlphaSmart Neo or Neo2.
-- Administrator rights for the one-time driver install (the installer asks
-  for this itself; day-to-day use afterward does not require running as
-  admin).
+- Administrator rights for the driver install.
 
 ## Installing
 
@@ -37,7 +37,7 @@ Download the latest installer from the [Releases page](https://github.com/linksd
 
 The installer isn't code-signed yet, so Windows SmartScreen will likely show
 a "Windows protected your PC" warning when you run it. This is expected for
-a small unsigned tool, not a sign that anything is wrong. Click "More info",
+a small unsigned tool, and not a sign that anything is wrong. Click "More info",
 then "Run anyway" to proceed.
 
 If Windows 11's **Smart App Control** is enabled, it may block the installer
@@ -49,38 +49,42 @@ it off to install:
    Control settings**, and set it to **Off**.
 2. Run the installer as normal.
 3. Turn Smart App Control back **On** afterward from the same settings page.
-   Recent Windows updates allow it to be re-enabled this way without needing
-   a clean install.
 
 Once running, the installer will:
 
 1. Ask you to accept a short disclaimer (this is unofficial, third-party
    software, use at your own risk).
 2. Install a signed WinUSB driver for the Neo's two USB modes.
-3. Ask you to connect or reconnect the Neo so it can do the first mode
-   switch.
+3. Ask you to connect or reconnect the Neo.
+4. Ask you to run NeoSync and click connect.
 
 After that, the Neo will no longer work as a plain USB keyboard on that PC,
 since NeoSync's driver replaces the keyboard driver in order to talk to the
 device directly. This can be undone from Advanced > Repair NeoSync > Remove
-WinUSB drivers in the app, followed by unplugging and replugging the Neo.
+WinUSB drivers, followed by unplugging and replugging the Neo.
 
 ## Using it
 
-Open NeoSync, plug in the Neo, and click Connect. Once connected, select a
-file in the tree and click Download or Upload, or use Quick Sync to pull
-everything at once. Advanced options -- repairing or removing drivers,
-diagnostic logging, checking for updates, and color themes -- are under the
-Advanced menu. Driver and service troubleshooting is consolidated under
+Plug in the Neo, open NeoSync, and click Connect. Once connected, select a
+file in the tree to enable Download, Delete, and Upload. You can also use 
+Quick Sync to pull everything at once onto your pc. You can open the preview editor by double 
+clicking a text preview in the tree (see more on this below). Advanced options: repairing or removing drivers,
+diagnostic logging, checking for updates, and color themes. Driver and service troubleshooting is consolidated under
 Advanced > Repair NeoSync.
 
 ## Using the text preview editor
 
-NeoSync has a built in text previewer and editor (refered to as the "preview editor"), for the files stored on it. To access it: double-click on the text preview in the AlphaWord tree that you want to open. A new window will load containing the full text of the file.
+NeoSync has a built in text previewer and editor (refered to as the "preview editor"), for the files stored on it.
+To access it: double-click on the text preview in the AlphaWord tree that you want to open.
+A new window will load containing the full text of the file.
 
-In the preview editor you can review a file's full text before downloading it - and also make edits. It can even use it as a streamlined text editor for writing. To save the file after making edits click "Save", this saves your changes to the file stored on the Neo directly. Click "Download" to download the current text file to your computer (this includes any changes you've made in the preview editor, even if you have not clicked 'Save' yet).
+In the preview editor you can review a file's full text before downloading it - and also make edits.
+To save the file after making edits click "Save", this saves your changes to the file stored
+on the Neo directly. Click "Download" to download the current text file to your computer (this includes any changes you've made in
+the preview editor, even if you have not clicked 'Save' yet).
 
-The preview editor has buttons for increasing and decreasing the font size, as well as a pallette of quick themes to help make reading text easier. (It defaults to your current theme selected in the Advanced menu).
+The preview editor has buttons for increasing and decreasing the font size, as well as a pallette of quick themes to help make
+reading text easier. (It defaults to your current theme selected in the Advanced menu).
 
 ## To-do
 
