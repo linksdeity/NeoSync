@@ -74,6 +74,22 @@ diagnostic logging, checking for updates, and color themes -- are under the
 Advanced menu. Driver and service troubleshooting is consolidated under
 Advanced > Repair NeoSync.
 
+## Using the text preview editor
+
+NeoSync has a built in text previewer and editor (refered to as the "preview editor"), for the files stored on it. To access it: double-click on the text preview in the AlphaWord tree that you want to open. A new window will load containing the full text of the file.
+
+In the preview editor you can review a file's full text before downloading it - and also make edits. It can even use it as a streamlined text editor for writing. To save the file after making edits click "Save", this saves your changes to the file stored on the Neo directly. Click "Download" to download the current text file to your computer (this includes any changes you've made in the preview editor, even if you have not clicked 'Save' yet).
+
+The preview editor has buttons for increasing and decreasing the font size, as well as a pallette of quick themes to help make reading text easier. (It defaults to your current theme selected in the Advanced menu).
+
+## To-do
+
+1. Improve the file tree, it's very basic and could be made much simpler/cleaner.
+2. Allow drag and drop text files.
+3. Support applet files.
+4. Support Neo system updates.
+5. Add more fucntionality to the preview editor (line numbers, zebra striping, character/word count, etc).
+
 ## Building from source
 
 Requires the .NET 10 SDK and Inno Setup 7.
